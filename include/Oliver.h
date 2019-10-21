@@ -249,15 +249,72 @@ namespace Olly {
 
 		var a = pop_lead(expr);
 
-		if (a.type() == "expression") {
+		auto t_name = a.type();
+
+		if (t_name == "symbol") {
+
+			// a = get_symbolic_value(arg);
+		}
+
+		if (t_name == "expression") {
 			/*
 				Evaluate the expression with its own stack during runtime.  
 				But maintain the current environment.
 			*/
 			a = Oliver(env, a);
-		}
 
-		stack = stack.place(a);
+			stack = stack.place(a);
+		}
+		else if (t_name != "op_call") {
+			stack = stack.place(a);
+		}
+		else {
+
+			switch (a.integer()) {
+
+			case 11:	// STACK = Print the current stack queue.
+			{
+				print(stack);
+			}
+				break;
+
+			case 12:	// CODE = Print the current code queue.
+			{
+				print(expr);
+			}
+			break;
+
+			case 21:	// POP = Remove the top element of the stack.
+			{
+				stack = stack.shift();
+			}
+			break;
+
+			case 22:	// DUP = Duplicate the top element of the stack.
+			{
+				stack = stack.place(stack.lead());
+			}
+			break;
+
+			case 23:	// SWAP = Change the order of the top two elements of the stack.
+			{
+				stack = stack.place(stack.lead());
+			}
+			break;
+
+			case 24:	// ROLL = Roll or Rotate all elements of the stack.  
+			{			// Takea a single numerical integer argument.  
+						// arg < 0  Roll top elements to the bottom of the stack.  
+						// arg > 0  Roll bottom elements to the top of the stack.
+				stack = stack.place(stack.lead());
+			}
+			break;
+
+
+			default:
+				break;
+			}
+		}
 
 		return function_call(env, expr, stack);
 	}

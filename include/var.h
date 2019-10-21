@@ -126,6 +126,8 @@ namespace Olly {
 		var        operator/(const var& other)                          const;
 		var        operator%(const var& other)                          const;
 
+		int_t        integer()                                          const;
+
 	private:
 
 		struct interface_t {
@@ -182,6 +184,8 @@ namespace Olly {
 			virtual bool_t       __complex()                                      const = 0;
 
 			virtual str_t        __help()                                         const = 0;
+
+			virtual int_t        __integer()                                      const = 0;
 		};
 
 		template <typename T>
@@ -240,6 +244,8 @@ namespace Olly {
 			bool_t       __complex()	     					          const;
 
 			str_t        __help()                                         const;
+
+			int_t        __integer()                                      const;
 
 			T            _data;
 		};
@@ -652,6 +658,15 @@ namespace Olly {
 	}
 
 
+	template<typename T>            /****  Return An Integer Representation ****/
+	int_t __integer__(const T& self);
+
+	template<typename T>
+	int_t __integer__(const T& self) {
+		return 0;
+	}
+
+
 	/********************************************************************************************/
 	//
 	//                                 'null' Class Implimentation
@@ -944,6 +959,10 @@ namespace Olly {
 		return mod(other);
 	}
 
+	int_t var::integer() const {
+		return _self->__integer();
+	}
+
 	/********************************************************************************************/
 	//
 	//                                'data_t' Class Implementation
@@ -1122,6 +1141,11 @@ namespace Olly {
 	template <typename T>
 	str_t var::data_t<T>::__help() const {
 		return __help__(_data);
+	}
+
+	template <typename T>
+	int_t var::data_t<T>::__integer() const {
+		return __integer__(_data);
 	}
 
 } // end namespace

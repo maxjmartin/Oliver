@@ -235,14 +235,12 @@ namespace Olly {
 
 		var next = self;
 
-		while (!next.atomic()) {
+		while (next.is()) {
 
 			a = a.place(next.lead());
 
 			next = next.shift();
 		}
-
-		a = a.place(next.lead());
 
 		return a;
 	}
