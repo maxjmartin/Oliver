@@ -4,7 +4,7 @@
 //
 //			Copyright 2019 Max J. Martin
 //
-//			This file is part of Oliver.
+//		  	This file is part of Oliver.
 //			
 //			Oliver is free software : you can redistribute it and / or modify
 //			it under the terms of the GNU General Public License as published by
@@ -27,23 +27,21 @@ namespace Olly {
 
 	/********************************************************************************************/
 	//
-	//                              'code_reader' class definition
+	//                              'token_reader' class definition
 	//
-	//        The code_reader class opens a file and then passes each individual character
-	//        to the parser for evaluation.  If a valid file is not opened then the string
-	//        itself is parsed as an object of code to evaluate.  
+	//        The token_reader class simply manages iteration over a series of text tokens.
 	//
 	/********************************************************************************************/
 
-	class code_reader {
+	class token_reader {
 
 		const tokens_t&             _code;
 		tokens_t::const_iterator	_i;
 
 	public:
 
-		code_reader(const tokens_t& input_code);
-		virtual ~code_reader();
+		token_reader(const tokens_t& input_code);
+		virtual ~token_reader();
 
 		str_t next();
 		str_t peek();
@@ -51,36 +49,30 @@ namespace Olly {
 		bool_t is();
 
 	private:
-		code_reader();
-		code_reader(const code_reader& obj) = delete;
+		token_reader();
+		token_reader(const token_reader& obj) = delete;
 	};
 
 	/********************************************************************************************/
 	//
-	//                               'code_reader' method definition
+	//                               'token_reader' method definition
 	//
 	/********************************************************************************************/
 
-	code_reader::code_reader() : _code(tokens_t()), _i() {
+	token_reader::token_reader() : _code(tokens_t()), _i() {
 	}
 
-	code_reader::code_reader(const tokens_t& input_code) : _code(input_code), _i() {
+	token_reader::token_reader(const tokens_t& input_code) : _code(input_code), _i() {
 
 		if (!_code.empty()) {
 			_i = _code.cbegin();
 		}
 	}
 
-	code_reader::~code_reader() {
+	token_reader::~token_reader() {
 	}
 
-	str_t code_reader::next() {
-		/*
-			As long as the file is not at the end of the file,
-			return the current value of '_c' and set the next
-			value of '_c'.  Return a null character if the
-			file is eof.
-		*/
+	str_t token_reader::next() {
 
 		if (is()) {
 
@@ -94,14 +86,14 @@ namespace Olly {
 		return "";
 	}
 
-	str_t code_reader::peek() {
+	str_t token_reader::peek() {
 		/*
 			Return the current value of '_c'.
 		*/
 		return *_i;
 	}
 
-	bool_t code_reader::is() {
+	bool_t token_reader::is() {
 		/*
 			Return true if the file is not eof
 			and in good condition.

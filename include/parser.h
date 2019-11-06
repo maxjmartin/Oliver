@@ -21,14 +21,14 @@
 //			
 /********************************************************************************************/
 
-#include "code_reader.h"
+#include "token_reader.h"
 #include "text_reader.h"
 #include "file_writer.h"
 
-#include "expression.h"
 #include "number.h"
 #include "string.h"
 #include "symbol.h"
+#include "Oliver.h"
 
 namespace Olly {
 
@@ -59,7 +59,7 @@ namespace Olly {
 		void parse();
 		void parse(const str_t& input);
 		void convert_to_postfix();
-		var  compile();
+		let  compile();
 
 		str_t get_file_name() const;
 
@@ -70,7 +70,7 @@ namespace Olly {
 		parser();
 		parser(const parser& obj) = delete;
 
-		void compile(str_t& word, code_reader& code, var& exp);
+		void compile(str_t& word, token_reader& code, let& exp);
 
 		int_t  is_regex_escape_char(const char& c);
 		int_t  is_string_escape_char(const char& c);
@@ -86,8 +86,8 @@ namespace Olly {
 		str_t expression_op(const char& c);
 		str_t scope_op(const char& c);
 
-		str_t collect_string(const str_t& stop, code_reader& code);
-		expression collect_args(const str_t& stop, code_reader& code);
+		str_t collect_string(const str_t& stop, token_reader& code);
+		expression collect_args(const str_t& stop, token_reader& code);
 
 		void skip_comment_line();
 	};
@@ -273,7 +273,7 @@ namespace Olly {
 				}
 			}
 
-			else if (c == '(' || c == ')') {
+			else if (c == '(' || c == ':' || c == ')' || c == ';') {
 				/*
 					An expression operator was encountered.
 					Process the expression, and add it to _text
@@ -287,23 +287,6 @@ namespace Olly {
 
 				if (!_skip) {
 					_text.push_back(expression_op(c));
-				}
-
-				c = ' ';
-			}
-
-			else if (c == ':' || c == ';') {
-				/*
-					Treat ':' as '(' and ';' as ')'.  
-				*/
-
-				if (word.size()) {
-					process_word(word);
-					word = "";
-				}
-
-				if (!_skip) {
-					_text.push_back(scope_op(c));
 				}
 
 				c = ' ';
@@ -421,16 +404,16 @@ namespace Olly {
 		// _text.push_back(")");
 	}
 
-	var parser::compile() {
+	let parser::compile() {
 
-		code_reader code(_text);
+		token_reader code(_text);
 
 		if (!code.is()) {
 			return expression();
 		}
 
 		str_t word;
-		var exp = expression();
+		let exp = expression();
 
 		while (code.is()) {
 
@@ -444,14 +427,9 @@ namespace Olly {
 		return exp.reverse();
 	}
 
-	void parser::compile(str_t& word, code_reader& code, var& exp) {
+	void parser::compile(str_t& word, token_reader& code, let& exp) {
 
 		if (word == ")") {
-			return;
-		}
-
-		if (word == ":") {
-			exp = exp.place(collect_args(";", code));
 			return;
 		}
 
@@ -465,9 +443,26 @@ namespace Olly {
 			return;
 		}
 
+		if (word == "F") {
+
+			let func = expression();
+
+			word = code.next();
+
+			compile(word, code, func);
+
+			word = code.next();
+
+			compile(word, code, func);
+
+			exp = exp.place(function(second(func), first(func)));
+
+			return;
+		}
+		
 		if (word == "(") {
 
-			var e = expression();
+			let e = expression();
 
 			while (code.is() && word != ")") {
 
@@ -475,8 +470,8 @@ namespace Olly {
 
 				compile(word, code, e);
 			}
-
-			exp = exp.place(e);
+			
+			exp = exp.place(e.reverse());
 
 			return;
 		}
@@ -796,7 +791,7 @@ namespace Olly {
 		/*
 			Validate which expression operator is provided.
 		*/
-		if (c == '(') {
+		if (c == '(' || c == ':') {
 
 			return "(";
 		}
@@ -880,7 +875,7 @@ namespace Olly {
 		_text = buffer;
 	}
 
-	str_t parser::collect_string(const str_t& stop, code_reader& code) {
+	str_t parser::collect_string(const str_t& stop, token_reader& code) {
 
 		str_t word = code.next();
 		str_t text = "";
@@ -896,11 +891,11 @@ namespace Olly {
 		return text;
 	}
 
-	expression parser::collect_args(const str_t& stop, code_reader& code) {
+	expression parser::collect_args(const str_t& stop, token_reader& code) {
 
 		str_t word = code.next();
 
-		var args = expression();
+		let args = expression();
 
 		while (word != stop) {
 

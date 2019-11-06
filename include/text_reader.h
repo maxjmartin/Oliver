@@ -31,7 +31,7 @@ namespace Olly {
 	//
 	//        The text_reader class opens a file and then passes each individual character
 	//        to the parser for evaluation.  If a valid file is not opened then the string
-	//        itself is parsed as an object of code to evaluate.  
+	//        itself is iterated over for reading.  
 	//
 	/********************************************************************************************/
 
@@ -110,10 +110,10 @@ namespace Olly {
 
 	char_t text_reader::next() {
 		/*
-		As long as the file is not at the end of the file,
-		return the current value of '_c' and set the next
-		value of '_c'.  Return a null character if the
-		file is eof.
+			As long as the file is not at the end of the file,
+			return the current value of '_c' and set the next
+			value of '_c'.  Return a null character if the
+			file is eof.
 		*/
 
 		if (is()) {
@@ -154,14 +154,11 @@ namespace Olly {
 
 	bool_t text_reader::is_file() {
 		/*
-		Return true if the file is not eof
-		and in good condition.
+			Return true if the file is not eof
+			and in good condition.
 		*/
 
-		if (_file) {
-			return (!_input.eof() && _input.good());
-		}
-		return false;
+		return _file;
 	}
 
 	str_t text_reader::get_line() {

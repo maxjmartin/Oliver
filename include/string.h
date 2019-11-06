@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "var.h"
+#include "let.h"
 
 namespace Olly {
 
@@ -52,15 +52,15 @@ namespace Olly {
 
 		friend str_t       __type__(const string& self);
 		friend bool          __is__(const string& self);
-		friend real_t      __comp__(const string& self, var other);
+		friend real_t      __comp__(const string& self, const let& other);
 		friend void         __str__(stream_t& out, const string& self);
 		friend void        __repr__(stream_t& out, const string& self);
 
 		friend int_t        __len__(const string& self);
-		friend var         __lead__(const string& self);
-		friend var        __place__(const string& self, var other);
-		friend var        __shift__(const string& self);
-		friend var      __reverse__(const string& self);
+		friend let         __lead__(const string& self);
+		friend let        __place__(const string& self, const let& other);
+		friend let        __shift__(const string& self);
+		friend let      __reverse__(const string& self);
 
 		friend bool_t  __iterable__(const string& self);
 	};
@@ -96,7 +96,7 @@ namespace Olly {
 		return !self._value.empty();
 	}
 
-	real_t __comp__(const string& self, var other) {
+	real_t __comp__(const string& self, const let& other) {
 
 		const string* s = other.cast<string>();
 
@@ -129,12 +129,12 @@ namespace Olly {
 		return (int_t)self._value.size();
 	}
 
-	var __lead__(const string& self) {
+	let __lead__(const string& self) {
 
 		return string(self._value.front());
 	}
 
-	var __place__(const string& self, var other) {
+	let __place__(const string& self, const let& other) {
 
 		const string* s = other.cast<string>();
 
@@ -150,7 +150,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __shift__(const string& self) {
+	let __shift__(const string& self) {
 
 		if (self._value.empty()) {
 			return self;
@@ -162,7 +162,7 @@ namespace Olly {
 		return t;
 	}
 
-	var __reverse__(const string& self) {
+	let __reverse__(const string& self) {
 
 		string l = self;
 

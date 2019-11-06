@@ -23,32 +23,17 @@
 
 #include <algorithm>
 #include <cctype>
-// #include <codecvt>
 #include <complex>
-// #include <cstddef>
-// #include <cstdio>
-// #include <ctime>
-// #include <chrono>
 #include <deque>
 #include <fstream>
-// #include <functional>
 #include <iomanip>
 #include <iostream>
-// #include <iterator>
-// #include <limits>
-// #include <list>
 #include <locale>
 #include <map>
-// #include <memory>
 #include <mutex>
-// #include <random>
 #include <regex>
-// #include <stdexcept>
 #include <sstream>
 #include <string>
-// #include <typeinfo>
-// #include <type_traits>
-// #include <utility>
 #include <vector>
 
 #ifdef _MSC_VER
@@ -111,35 +96,28 @@ namespace Olly {
 
 	static bool_t escape_char(char c);
 
-	static inline str_t to_lower(str_t str);
-	static inline str_t to_upper(str_t str);
+	inline str_t to_lower(str_t str);
+	inline str_t to_upper(str_t str);
 
-	static inline void ltrim(str_t& s);
-	static inline void rtrim(str_t& s);
-	static inline void lrtrim(str_t& s);
+	inline void ltrim(str_t& s);
+	inline void rtrim(str_t& s);
+	inline void lrtrim(str_t& s);
 
-	static inline str_t left_trim(str_t s);
-	static inline str_t right_trim(str_t s);
-	static inline str_t trim(str_t s);
+	inline str_t left_trim(str_t s);
+	inline str_t right_trim(str_t s);
+	inline str_t trim(str_t s);
 
-	static inline str_t correct_ml_indentions(str_t& str);
+	inline str_t correct_ml_indentions(str_t& str);
 
 	static str_t set_file_ext(str_t name, const str_t ext);
 
 	static int_t get_op_prec(const str_t& op);
 
-	static inline bool_t is_number(const str_t& word);
+	inline bool_t is_number(const str_t& word);
 
 	static tokens_t split(str_t str, char delim);
 	static tokens_t split(const str_t& str, str_t delim);
 
-	/*
-		A general std::string conversion function to a type.
-		Objects must overload std::stringstream '>>' to work.
-		TODO: Determine if this function needs supported to
-		allow the removal of the stream '>>' operator from 
-		the overall definition of the var data type.  
-	*/
 	template<typename T> T to(std::string str);                      
 
 
@@ -333,21 +311,27 @@ namespace Olly {
 
 	static const std::map<str_t, int_t> OPERATORS = {
 
-		{ "LAMBDA",			 1 },
-		{ ":",				 2 },
-		{ ";",				 3 },
+		{ "let",			 1 },
+		{ "LET",			 1 },
+		{ "TYPE",		     4 },
+		{ "FIRST",			 5 },
+		{ "SECOND",			 6 },
 
 		{ "STACK",			11 },
 		{ "CODE",			12 },
-		{ "EMIT",			13 },
+		{ "ENVR",			13 },
+		{ "EMIT",			14 },
 
 		{ "POP",			21 },
 		{ "DUP",			22 },
 		{ "SWAP",			23 },
 		{ "ROLL",			24 },
+		{ "BUFF",			25 },
 
 		{ "ADD",			31 },
 		{ "SUB",			32 },
+
+		{ "=",			   101 },
 
 		/*
 		{ "LEAD",        1 },

@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "var.h"
+#include "let.h"
 
 namespace Olly {
 
@@ -52,7 +52,7 @@ namespace Olly {
 
 		friend bool           __is__(const op_call& self);
 		friend str_t        __type__(const op_call& self);
-		friend real_t       __comp__(const op_call& self, var other);
+		friend real_t       __comp__(const op_call& self, const let& other);
 		friend void          __str__(stream_t& out, const op_call& self);
 		friend void         __repr__(stream_t& out, const op_call& self);
 		friend int_t     __integer__(const op_call& self);
@@ -96,7 +96,7 @@ namespace Olly {
 		return "op_call";
 	}
 
-	real_t __comp__(const op_call& self, var other) {
+	real_t __comp__(const op_call& self, const let& other) {
 
 		const op_call* s = other.cast<op_call>();
 
@@ -139,8 +139,8 @@ namespace Olly {
 	//
 	//                                'symbol' Class Definition
 	//
-	//        The symbol class defines a variable instance which exists within
-	//        variable environment of the program.  
+	//        The symbol class defines a letiable instance which exists within
+	//        letiable environment of the program.  
 	//
 	/********************************************************************************************/
 
@@ -161,7 +161,7 @@ namespace Olly {
 
 		friend bool           __is__(const symbol& self);
 		friend str_t        __type__(const symbol& self);
-		friend real_t       __comp__(const symbol& self, var other);
+		friend real_t       __comp__(const symbol& self, const let& other);
 		friend void          __str__(stream_t& out, const symbol& self);
 		friend void         __repr__(stream_t& out, const symbol& self);
 	};
@@ -194,7 +194,7 @@ namespace Olly {
 		return "symbol";
 	}
 
-	real_t __comp__(const symbol& self, var other) {
+	real_t __comp__(const symbol& self, const let& other) {
 
 		const symbol* s = other.cast<symbol>();
 

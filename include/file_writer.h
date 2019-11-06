@@ -29,9 +29,8 @@ namespace Olly {
 	//
 	//                              'file_writer' class definition
 	//
-	//        The file_writer class opens a file and then passes each individual character
-	//        to the parser for evaluation.  If a valid file is not opened then the string
-	//        itself is parsed as an object of code to evaluate.  
+	//        The file_writer class opens a file and then is used to write text to the
+	//        file.
 	//
 	/********************************************************************************************/
 

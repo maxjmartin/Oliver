@@ -22,7 +22,7 @@
 /********************************************************************************************/
 
 #include <complex>
-#include "var.h"
+#include "let.h"
 
 namespace Olly {
 
@@ -62,27 +62,29 @@ namespace Olly {
 
 		friend str_t      __type__(const number& self);
 		friend bool_t       __is__(const number& self);
-		friend real_t     __comp__(const number& self, var other);
+		friend real_t     __comp__(const number& self, const let& other);
 		friend void        __str__(stream_t& out, const number& self);
 		friend void       __repr__(stream_t& out, const number& self);
 
-		friend bool_t    __l_and__(const number& self, var other);
-		friend bool_t     __l_or__(const number& self, var other);
-		friend bool_t    __l_xor__(const number& self, var other);
+		friend bool_t    __l_and__(const number& self, const let& other);
+		friend bool_t     __l_or__(const number& self, const let& other);
+		friend bool_t    __l_xor__(const number& self, const let& other);
 		friend bool_t    __l_not__(const number& self);
 
-		friend var         __add__(const number& self, var other);
-		friend var         __sub__(const number& self, var other);
-		friend var         __mul__(const number& self, var other);
-		friend var         __div__(const number& self, var other);
-		friend var         __mod__(const number& self, var other);
+		friend let         __add__(const number& self, const let& other);
+		friend let         __sub__(const number& self, const let& other);
+		friend let         __mul__(const number& self, const let& other);
+		friend let         __div__(const number& self, const let& other);
+		friend let         __mod__(const number& self, const let& other);
 
-		friend var       __f_div__(const number& self, var other);
-		friend var         __rem__(const number& self, var other);
-		friend var         __pow__(const number& self, var other);
+		friend let       __f_div__(const number& self, const let& other);
+		friend let         __rem__(const number& self, const let& other);
+		friend let         __pow__(const number& self, const let& other);
 
 		friend bool_t      __nan__(const number& self);
 		friend bool_t  __complex__(const number& self);
+
+		friend int_t   __integer__(const number& self);
 
 	private:
 		num_t _value;
@@ -189,7 +191,7 @@ namespace Olly {
 		return (self._value.real() || self._value.imag() ? true : false);
 	}
 
-	real_t __comp__(const number& self, var other) {
+	real_t __comp__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -254,7 +256,7 @@ namespace Olly {
 	}
 
 
-	bool_t __l_and__(const number& self, var other) {
+	bool_t __l_and__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -270,7 +272,7 @@ namespace Olly {
 		return false;
 	}
 
-	bool_t __l_or__(const number& self, var other) {
+	bool_t __l_or__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -286,7 +288,7 @@ namespace Olly {
 		return false;
 	}
 
-	bool_t __l_xor__(const number& self, var other) {
+	bool_t __l_xor__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -323,7 +325,7 @@ namespace Olly {
 		return !self._value.real();
 	}
 
-	var __add__(const number& self, var other) {
+	let __add__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -333,7 +335,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __sub__(const number& self, var other) {
+	let __sub__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -343,7 +345,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __mul__(const number& self, var other) {
+	let __mul__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -353,7 +355,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __div__(const number& self, var other) {
+	let __div__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -363,7 +365,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __mod__(const number& self, var other) {
+	let __mod__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -379,7 +381,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __f_div__(const number& self, var other) {
+	let __f_div__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -395,7 +397,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __rem__(const number& self, var other) {
+	let __rem__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -413,7 +415,7 @@ namespace Olly {
 		return null();
 	}
 
-	var __pow__(const number& self, var other) {
+	let __pow__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -440,6 +442,11 @@ namespace Olly {
 		}
 
 		return false;
+	}
+
+	int_t __integer__(const number& self) {
+
+		return static_cast<int_t>(self._value.real());
 	}
 
 } // end

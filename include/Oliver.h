@@ -21,13 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "parser.h"
-#include "var.h"
-
-#include "expression.h"
-#include "set.h"
-#include "number.h"
-#include "string.h"
+#include "let.h"
 
 namespace Olly {
 
@@ -38,186 +32,102 @@ namespace Olly {
 	//          The Oliver Interpreter runtime is defined below.  It is design to run
 	//			as a stack inpterpreter evaluation of the code expression passed to it.
 	// 
-	//          The tail optimization code was modified from Andy Balaam's blog post.
-	//          https://www.artificialworlds.net/blog/2012/04/30/tail-call-optimisation-in-cpp/
 	//
 	/********************************************************************************************/
 
 	/********************************************************************************************/
 	//
-	//                                'Closure' Class Definition
-	//
-	//			The Closure class wraps arounf a function passed to the class to allow
-	//			it to then wrapped in a Lambda object allowing it to be tramoplined when
-	//			called.  
+	//                                'eval' Function Definitions
 	//
 	/********************************************************************************************/
 
-	class Lambda;	
-
-	class Closure {
-
-		typedef Lambda(*function)(var, var, var);
-
-		function _func;		// Function
-		var      _args;		// Arguments
-		var      _resl;		// Resolution
-		var      _envr;		// Environment
-
-	public:
-		
-		static const function NULL_FUNCTION;
-
-		Closure(function func, var args, var resl, var envr);
-
-		Lambda operator()();
-	};
-
-	/*
-		Define a null function, and a null lambda function 
-		to be used to define a completed Lambda result later.
-	*/ 
-	const Closure::function Closure::NULL_FUNCTION = nullptr;
-	const Closure NULL_LAMBDA(Closure::NULL_FUNCTION, null(), null(), null());
+	inline let         eval  (let exp);
+	inline lambda_t    eval  (environment env, let exp);
+	       lambda_t  __eval__(environment env, let exp);
 
 	/********************************************************************************************/
 	//
-	//                                'Lambda' Class Definition
+	//                              'function' Class Definition
 	//
-	//			The Lambda class accepts a Closure data type, and manages the closure
-	//			to identify when it has completed running and what the result of the
-	//			function closure evaluation is.  
 	//
 	/********************************************************************************************/
 
-	class Lambda {
+	class function {
+
+		environment _env;
+		let         _args;
+		let         _body;
 
 	public:
 
-		Closure   lambda;
+		function();
+		function(const function& exp);
+		function(let args, let body);
+		virtual ~function();
 
-		Lambda(Closure clsr, var resl, bool_t fin);
+		friend str_t           __type__(const function& self);
+		friend bool_t            __is__(const function& self);
+		friend real_t          __comp__(const function& self, const let& other);
+		friend void             __str__(stream_t& out, const function& self);
+		friend void            __repr__(stream_t& out, const function& self);
 
-		bool_t not_done() const;
-		var range() const;
-
-	private:
-		var       _result;
-		bool_t    _finished;
+		friend lambda_t          __eval__(const function& self, environment env, let& exp);
 	};
 
-	/********************************************************************************************/
-	//
-	//                       'function_call' Trampoline Function Definitions
-	//
-	/********************************************************************************************/
-
-	var    function_call(Lambda func);
-	Lambda function_call(var env, var expr, var stack);
-
-	/********************************************************************************************/
-	//
-	//                                Helper Function Definitions
-	//
-	/********************************************************************************************/
-
-	bool_t expression_is_empty(var expr);
-
-	Lambda result(var stack);
-
-	var pop_lead(var& expr);
-
-	/********************************************************************************************/
-	//
-	//                                'Oliver' Function Definitions
-	//
-	/********************************************************************************************/
-	
-	var       Oliver  (var expr);
-	var       Oliver  (var env, var expr);
-	Lambda  __Oliver__(var env, var expr, var stack);
-
-	/********************************************************************************************/
-	//
-	//                                'Lambda' Class Implimentation
-	//
-	/********************************************************************************************/
-
-	Lambda::Lambda(Closure clsr, var resl, bool_t fin) : lambda(clsr), _result(resl), _finished((!fin))  {
+	function::function() : _env(), _args(expression()), _body(expression()) {
 	}
 
-	bool_t Lambda::not_done() const {
-		return _finished;
+	function::function(const function& exp) : _env(exp._env), _args(exp._args), _body(exp._body) {
 	}
 
-	var Lambda::range() const {
-		return _result;
+	function::function(let args, let body) : _env(), _args(args), _body(body) {
 	}
 
-	/********************************************************************************************/
-	//
-	//                                'Closure' Class Implimentation
-	//
-	/********************************************************************************************/
-
-	Closure::Closure(function func, var args, var resl, var envr) : _func(func), _args(args), _resl(resl), _envr(envr) {
+	function::~function() {
 	}
 
-	Lambda Closure::operator()() {
-		return _func(_args, _resl, _envr);
+	std::string __type__(const function& self) {
+		return "function";
 	}
 
-	/********************************************************************************************/
-	//
-	//                       'function_call' Trampoline Function Implimentation
-	//
-	/********************************************************************************************/
+	bool_t __is__(const function& self) {
+		return self._args.is() || self._body.is();
+	}
 
-	var function_call(Lambda func) {
+	real_t __comp__(const function& self, const let& other) {
 		/*
-			Trampoline the lambda function calls to
-			allow tail function call optimization.
-			Once the function call is done processing
-			return the range of the fuction's result.
+			This can probably be removed.  Because an function
+			always evaluates to the stack, there would never be
+			a change to actually perform the comparison
+			between two functions.
+
+			However this may be useful under other circumstances.
 		*/
-		while (func.not_done()) {
-			func = func.lambda();
+
+		const function* e = other.cast<function>();
+
+		if (e) {
+
+			if (self._args == e->_args && self._body == e->_body) {
+				return 0.0;
+			}
 		}
-		return func.range();
+
+		return NOT_A_NUMBER;
 	}
 
-	Lambda function_call(var env, var expr, var stack) {
-		/*
-			Invoke an instance of the current function call environment.
-		*/
-		return Lambda(Closure(__Oliver__, env, expr, stack), null(), false);
+	void __str__(stream_t& out, const function& self) {
+		out << "F" << str(self._args) << str(self._body);
 	}
 
-	/********************************************************************************************/
-	//
-	//                                 Helper Function Implimentations
-	//
-	/********************************************************************************************/
-
-	bool_t expression_is_empty(var expr) {
-		/*
-			Return true if the expresion is empty.  
-		*/
-		return !expr.is();
+	void __repr__(stream_t& out, const function& self) {
+		out << "F" << repr(self._args) << repr(self._body);
 	}
 
-	Lambda result(var stack) {
-			/*
-				Package the stack in a null lambda call,
-				which has finished running.  
-			*/
-		return Lambda(NULL_LAMBDA, stack, true);
-	}
-
-	var pop_lead(var& expr) {
-		var a = expr.lead();
-		expr = expr.shift();
-		return a;
+	lambda_t __eval__(const function& self, environment env, let& exp) {
+		let body = self._body;
+		environment e = env;
+		return lambda_t(closure_t(__eval__, e, body), null(), false);
 	}
 
 	/********************************************************************************************/
@@ -226,97 +136,34 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	var Oliver(var expr) {
-		return Oliver(expression(), expr);
+	inline let eval(let exp) {
+		return trampoline(__eval__(environment(), exp));
 	}
 
-	var Oliver(var env, var expr) {
-		return function_call(Lambda(Closure(__Oliver__, env, expr, expression()), null(), false));
+	inline lambda_t eval(environment env, let exp) {
+		return lambda_t(closure_t(__eval__, env, exp), null(), false);
 	}
 
-	var Oliver(var env, var expr, var stack) {
-		return function_call(Lambda(Closure(__Oliver__, env, expr, stack), null(), false));
-	}
+	lambda_t __eval__(environment env, let exp) {
 
-	Lambda __Oliver__(var env, var expr, var stack) {
-
-		if (expression_is_empty(expr)) {
+		if (expression_is_empty(exp)) {
 			/*
 				If there are no argumenta within the expression return the stack.
+				Passing a null lambda function, the stack and setting the runtime to true.
 			*/
-			return result(stack);
+			return result(env.op_stack);
 		}
 
-		var a = pop_lead(expr);
+		let a = pop_lead(exp);
 
-		auto t_name = a.type();
+		str_t t_name = a.type();
 
-		if (t_name == "symbol") {
+		env.op_stack = env.op_stack.place(a);
 
-			// a = get_symbolic_value(arg);
-		}
-
-		if (t_name == "expression") {
-			/*
-				Evaluate the expression with its own stack during runtime.  
-				But maintain the current environment.
-			*/
-			a = Oliver(env, a);
-
-			stack = stack.place(a);
-		}
-		else if (t_name != "op_call") {
-			stack = stack.place(a);
-		}
-		else {
-
-			switch (a.integer()) {
-
-			case 11:	// STACK = Print the current stack queue.
-			{
-				print(stack);
-			}
-				break;
-
-			case 12:	// CODE = Print the current code queue.
-			{
-				print(expr);
-			}
-			break;
-
-			case 21:	// POP = Remove the top element of the stack.
-			{
-				stack = stack.shift();
-			}
-			break;
-
-			case 22:	// DUP = Duplicate the top element of the stack.
-			{
-				stack = stack.place(stack.lead());
-			}
-			break;
-
-			case 23:	// SWAP = Change the order of the top two elements of the stack.
-			{
-				stack = stack.place(stack.lead());
-			}
-			break;
-
-			case 24:	// ROLL = Roll or Rotate all elements of the stack.  
-			{			// Takea a single numerical integer argument.  
-						// arg < 0  Roll top elements to the bottom of the stack.  
-						// arg > 0  Roll bottom elements to the top of the stack.
-				stack = stack.place(stack.lead());
-			}
-			break;
+		print(env.op_stack);
 
 
-			default:
-				break;
-			}
-		}
-
-		return function_call(env, expr, stack);
+		return eval(env, exp);
 	}
 
 } // end
