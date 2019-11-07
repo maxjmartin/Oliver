@@ -390,7 +390,7 @@ namespace Olly {
 	struct environment {
 		let constants;
 		let variables;
-		let op_stack;
+		let return_stack;
 
 		environment();
 		environment(let c, let v, let s);
@@ -485,10 +485,10 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	environment::environment() : constants(expression()), variables(expression()), op_stack(expression()) {
+	environment::environment() : constants(expression()), variables(expression()), return_stack(expression()) {
 	}
 
-	environment::environment(let c, let v, let s) : constants(c), variables(v), op_stack(s) {
+	environment::environment(let c, let v, let s) : constants(c), variables(v), return_stack(s) {
 	}
 
 	/********************************************************************************************/
@@ -1196,7 +1196,7 @@ namespace Olly {
 	let __shift__(const expression& self) {
 
 		if (self._len == 0) {
-			return expression();
+			return null();
 		}
 
 		expression e = self;

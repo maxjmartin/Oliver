@@ -311,27 +311,32 @@ namespace Olly {
 
 	static const std::map<str_t, int_t> OPERATORS = {
 
-		{ "let",			 1 },
-		{ "LET",			 1 },
-		{ "TYPE",		     4 },
-		{ "FIRST",			 5 },
-		{ "SECOND",			 6 },
+		{ "lead",			 1 },
+		{ "shift",			 2 },
+		{ "place",			 3 },
+		{ "is?",			 4 },
+		{ "let",			 5 },
+		{ "STACK",			 6 },
+		{ "CODE",			 7 },
+		{ "VARS",			 8 },
+		{ "CONSTS",			 9 },
+		{ "function",		10 },
 
-		{ "STACK",			11 },
-		{ "CODE",			12 },
-		{ "ENVR",			13 },
-		{ "EMIT",			14 },
+		{ "LET",			 10000 },
+		{ "TYPE",		     40000 },
+		{ "FIRST",			 50000 },
+		{ "SECOND",			 60000 },
 
-		{ "POP",			21 },
-		{ "DUP",			22 },
-		{ "SWAP",			23 },
-		{ "ROLL",			24 },
-		{ "BUFF",			25 },
+		{ "POP",			210000 },
+		{ "DUP",			220000 },
+		{ "SWAP",			230000 },
+		{ "ROLL",			240000 },
+		{ "BUFF",			250000 },
 
-		{ "ADD",			31 },
-		{ "SUB",			32 },
+		{ "ADD",			310000 },
+		{ "SUB",			320000 },
 
-		{ "=",			   101 },
+		{ "=",			   1010000 },
 
 		/*
 		{ "LEAD",        1 },

@@ -25,6 +25,7 @@
 #include "text_reader.h"
 #include "file_writer.h"
 
+#include "boolean.h"
 #include "number.h"
 #include "string.h"
 #include "symbol.h"
@@ -443,7 +444,7 @@ namespace Olly {
 			return;
 		}
 
-		if (word == "F") {
+		if (word == "function") {
 
 			let func = expression();
 
