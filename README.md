@@ -1,2 +1,2 @@
 # Oliver
-Implementing an immutable interpreted language interpreter. Written in C++, and inspired by Python, Lisp, and Forth.
+Implementing an immutable interpreted programming language. Written in C++, and inspired by Python, Lisp, and Forth.  It is designed to be thread safe and sutable for real time systems.  
