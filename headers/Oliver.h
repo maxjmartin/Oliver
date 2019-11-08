@@ -42,11 +42,13 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	inline let         eval(let exp);
+	inline let         eval(let& exp);
 	inline lambda_t    eval(environment env, let exp);
 
-	inline let         eval_expression  (environment env, let exp);
-	       lambda_t  __eval_expression__(environment env, let exp);
+	inline let         eval_expression  (environment& env, let& exp);
+	       lambda_t  __eval_expression__(environment  env, let  exp);
+
+	inline let         eval_function(let& func, environment& env, let& exp);
 
 	/********************************************************************************************/
 	//
@@ -129,20 +131,16 @@ namespace Olly {
 
 	lambda_t __eval__(const function& self, environment env, let& exp) {
 
-		let args = self._args; 
+		let keys = self._args; 
 
-		while (args.is()) {
+		while (keys.is()) {
 
 			let value = pop_lead(exp);
 
-			while (value.type() == "symbol") {
-				value = get_symbol(env.variables, value);
-			}
-
-			env.variables = set_symbol(env.variables, pop_lead(args), value);
+			env.variables = set_variable(env.variables, pop_lead(keys), value);
 		}
 
-		return lambda_t(closure_t(__eval_expression__, env, self._body), null(), false);
+		return eval(env, self._body);
 	}
 
 	/********************************************************************************************/
@@ -151,7 +149,7 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	inline let eval(let exp) {
+	inline let eval(let& exp) {
 		return trampoline(__eval_expression__(environment(), exp));
 	}
 
@@ -159,7 +157,11 @@ namespace Olly {
 		return lambda_t(closure_t(__eval_expression__, env, exp), null(), false);
 	}
 
-	inline let eval_expression(environment env, let exp) {
+	inline let eval_function(let& func, environment& env, let& exp) {
+		return trampoline(func.eval(env, exp));
+	}
+
+	inline let eval_expression(environment& env, let& exp) {
 		return trampoline(__eval_expression__(env, exp));
 	}
 
@@ -177,8 +179,8 @@ namespace Olly {
 
 		str_t t_name = a.type();
 
-		if (t_name == "symbol") {
-			a = get_symbol(env.variables, a);
+		while (t_name == "symbol") {
+			a = get_symbol(env, a);
 			t_name = a.type();
 		}
 
@@ -188,7 +190,7 @@ namespace Olly {
 		}
 
 		else if (t_name == "function") {
-			env.return_stack = trampoline(a.eval(env, exp));
+			env.return_stack = eval_function(a, env, exp);
 		}
 
 		else if (t_name != "op_call") {
@@ -227,33 +229,181 @@ namespace Olly {
 				let   value = pop_lead(exp);
 
 				if (op == "=") {
-					env.variables = set_symbol(env.variables, key, value);
+					env.variables = set_variable(env.variables, key, value);
 				}
 			}	break;
 
-			case 6:	// STACK
+			case 6:	// const
+			{
+				let   key = pop_lead(exp);
+				str_t op = str(pop_lead(exp));
+				let   value = pop_lead(exp);
+
+				if (op == "=") {
+					env.constants= set_constant(env.constants, key, value);
+				}
+			}	break;
+
+			case 7:	// if
+			{
+				let   key = pop_lead(exp);
+				str_t op = str(pop_lead(exp));
+				let   value = pop_lead(exp);
+
+				if (op == "=") {
+					env.constants = set_constant(env.constants, key, value);
+				}
+			}	break;
+
+			case 8:	// print
+			{
+				let args = expression(pop_lead(exp));
+
+				args = eval_expression(env, args).reverse();
+				
+				stream_t stream;
+
+				stream << std::boolalpha;
+
+				while (args.is()) {
+					pop_lead(args).str(stream);
+				}
+
+				std::cout << stream.str();
+			}	break;
+
+			case 11: // EQ (Equility)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x == y));
+			}	break;
+
+			case 12: // NE (Postfix Non Equility)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x != y));
+			}	break;
+
+			case 13: // LT (Postfix Less Than)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x < y));
+			}	break;
+
+			case 14: // LE (Postfix Less Than Equal)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x <= y));
+			}	break;
+
+			case 15: // GT (Postfix Greater Than)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x > y));
+			}	break;
+
+			case 16: // GE (Postfix Greater Than Equal)
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+				env.return_stack = env.return_stack.place(boolean(x >= y));
+			}	break;
+
+			case 21: // = (Prefix Equility)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("EQ"));
+				exp = exp.place(x);
+			}	break;
+
+			case 22: // != (Prefix Non Equility)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("NE"));
+				exp = exp.place(x);
+			}	break;
+
+			case 23: // < (Prefix Less Than)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("LT"));
+				exp = exp.place(x);
+			}	break;
+
+			case 24: // <= (Prefix Less Than Equal)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("LE"));
+				exp = exp.place(x);
+			}	break;
+
+			case 25: // > (Prefix Greater Than)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("GT"));
+				exp = exp.place(x);
+			}	break;
+
+			case 26: // >= (Prefix Greater Than Equal)
+			{
+				let x = pop_lead(exp);
+				exp = exp.place(op_call("GE"));
+				exp = exp.place(x);
+			}	break;
+
+			case 31: // STACK
 			{
 				print("STACK = " + str(env.return_stack));
 			}	break;
 
-			case 7:	// CODE
+			case 32: // CODE
 			{
 				print("CODE = " + str(exp));
 			}	break;
 
-			case 8:	// VARS
+			case 33: // VARS
 			{
 				print("VARS = " + str(env.variables));
 			}	break;
 
-			case 9:	// CONSTS
+			case 34: // CONSTS
 			{
 				print("CONSTS = " + str(env.constants));
 			}	break;
 
-			case 10: // lambda
+			case 35: // CLEAR
 			{
-				print("CONSTS = " + str(env.constants));
+				let op = pop_lead(exp);
+
+				if (op.type() == "op_call") {
+
+					switch (op.integer()) {
+
+					case 31:
+						env.return_stack = expression();
+						break;
+
+					case 32:
+						exp = expression();
+						break;
+
+					case 33:
+						env.variables = expression();
+						break;
+
+					case 34:
+						env.constants = expression();
+						break;
+
+					default:
+						break;
+					}
+				}
 			}	break;
 
 			case 40000:	// TYPE

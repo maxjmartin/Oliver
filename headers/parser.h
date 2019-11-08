@@ -25,6 +25,7 @@
 #include "text_reader.h"
 #include "file_writer.h"
 
+#include "list.h"
 #include "boolean.h"
 #include "number.h"
 #include "string.h"
@@ -430,7 +431,7 @@ namespace Olly {
 
 	void parser::compile(str_t& word, token_reader& code, let& exp) {
 
-		if (word == ")") {
+		if (word == ")" || word == "]" || word == "}") {
 			return;
 		}
 
@@ -473,6 +474,22 @@ namespace Olly {
 			}
 			
 			exp = exp.place(e.reverse());
+
+			return;
+		}
+
+		if (word == "[") {
+
+			let l = list();
+
+			while (code.is() && word != "]") {
+
+				word = code.next();
+
+				compile(word, code, l);
+			}
+
+			exp = exp.place(l.reverse());
 
 			return;
 		}
@@ -607,7 +624,7 @@ namespace Olly {
 			return "";
 		}
 
-		return correct_ml_indentions(str);
+		return str;
 	}
 
 	str_t parser::read_string() {
@@ -678,7 +695,7 @@ namespace Olly {
 			}
 		}
 
-		return correct_ml_indentions(str);
+		return str;
 	}
 
 	str_t parser::read_number() {
@@ -761,7 +778,7 @@ namespace Olly {
 			}
 		}
 
-		return correct_ml_indentions(str);
+		return str;
 	}
 
 	str_t parser::list_op(const char& c) {

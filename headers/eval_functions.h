@@ -48,8 +48,11 @@ namespace Olly {
 
 	let append_buffer(let buffer, let list);
 
-	let get_symbol(let env, let key);
-	let set_symbol(let env, let key, let value);
+	let  get_symbol(environment env, let key);
+	bool get_symbol(let variables, let key, let& value);
+
+	let set_variable(let variables, let key, let value);
+	let set_constant(let constants, let key, let value);
 
 	/********************************************************************************************/
 	//
@@ -66,25 +69,35 @@ namespace Olly {
 		return list;
 	}
 
-	let get_symbol(let env, let key) {
-		
-		let vars = env;
+	let get_symbol(environment env, let key) {
+
+		let value;
+
+		if (get_symbol(env.constants, key, value) || get_symbol(env.variables, key, value)) {
+			return value;
+		}
+
+		return null();
+	}
+
+	bool get_symbol(let vars, let key, let& value) {
 
 		while (vars.is()) {
 
 			let pair = pop_lead(vars);
 
 			if (first(pair) == key) {
-				return second(pair);
+				value = second(pair);
+				return true;
 			}
 		}
 
-		return null();
+		return false;
 	}
 
-	let set_symbol(let env, let key, let value) {
+	let set_variable(let variables, let key, let value) {
 		
-		let vars   = env;
+		let vars   = variables;
 		let buffer = expression();
 
 		while (vars.is()) {
@@ -103,9 +116,28 @@ namespace Olly {
 			buffer = buffer.place(pair);
 		}
 
-		env = env.place(expression(key, value));
+		variables = variables.place(expression(key, value));
 
-		return env;
+		return variables;
+	}
+
+	let set_constant(let constants, let key, let value) {
+
+		let vars = constants;
+
+		while (vars.is()) {
+
+			let pair = pop_lead(vars);
+
+			if (first(pair) == key) {
+
+				return constants;
+			}
+		}
+
+		constants = constants.place(expression(key, value));
+
+		return constants;
 	}
 
 } // end

@@ -107,8 +107,6 @@ namespace Olly {
 	inline str_t right_trim(str_t s);
 	inline str_t trim(str_t s);
 
-	inline str_t correct_ml_indentions(str_t& str);
-
 	static str_t set_file_ext(str_t name, const str_t ext);
 
 	static int_t get_op_prec(const str_t& op);
@@ -178,21 +176,6 @@ namespace Olly {
 	inline str_t trim(str_t s) {
 		lrtrim(s);
 		return s;
-	}
-
-	inline str_t correct_ml_indentions(str_t& str) {
-		/*
-			Trim any new lines followed by ' ' chars to allow
-			multi line text strings to be definable within a
-			single vertical scope.
-		*/
-
-		str_t result;
-		std::regex_replace(std::back_inserter(result), str.begin(), str.end(), STRING_INDENT, "\n");
-
-		lrtrim(result);
-
-		return result;
 	}
 
 	str_t set_file_ext(str_t name, const str_t ext) {
@@ -316,14 +299,32 @@ namespace Olly {
 		{ "place",			 3 },
 		{ "is?",			 4 },
 		{ "let",			 5 },
-		{ "STACK",			 6 },
-		{ "CODE",			 7 },
-		{ "VARS",			 8 },
-		{ "CONSTS",			 9 },
-		{ "function",		10 },
+		{ "const",			 6 },
+		{ "if",	    		 7 },
+		{ "print",	    	 8 },
 
-		{ "LET",			 10000 },
-		{ "TYPE",		     40000 },
+		{ "EQ",			    11 },
+		{ "NE",			    12 },
+		{ "LT",			    13 },
+		{ "LE",			    14 },
+		{ "GT",			    15 },
+		{ "GE",			    16 },
+
+		{ "=",			    21 },
+		{ "!=",			    22 },
+		{ "<",			    23 },
+		{ "<=",			    24 },
+		{ ">",			    25 },
+		{ ">=",			    26 },
+
+		{ "STACK",			31 },
+		{ "CODE",			32 },
+		{ "VARS",			33 },
+		{ "CONSTS",			34 },
+		{ "CLEAR",			35 },
+
+		{ "first",			 10000 },
+		{ "second",		     40000 },
 		{ "FIRST",			 50000 },
 		{ "SECOND",			 60000 },
 

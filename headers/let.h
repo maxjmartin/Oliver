@@ -129,7 +129,7 @@ namespace Olly {
 
 		int_t        integer()                                          const;
 
-		lambda_t          eval(const environment& env, let& exp)        const;
+		lambda_t      eval(const environment& env, let& exp)            const;
 
 	private:
 
@@ -252,7 +252,7 @@ namespace Olly {
 
 			int_t        __integer()                                      const;
 
-			lambda_t       __eval(const environment& env, let& exp)       const;
+			lambda_t     __eval(const environment& env, let& exp)         const;
 
 			T            _data;
 		};
@@ -951,11 +951,8 @@ namespace Olly {
 	void __str__(stream_t& out, const node& self) {
 
 		if (!__is__(self)) {
-			out << "()";
 			return;
 		}
-
-		out << "(";
 
 		let e = self;
 
@@ -973,18 +970,13 @@ namespace Olly {
 			}
 
 		} while (next);
-
-		out << ")";
 	}
 
 	void __repr__(stream_t& out, const node& self) {
 
 		if (!__is__(self)) {
-			out << "()";
 			return;
 		}
-
-		out << "(";
 
 		let e = self;
 
@@ -1002,8 +994,6 @@ namespace Olly {
 			}
 
 		} while (next);
-
-		out << ")";
 	}
 
 	int_t __len__(const node& self) {
@@ -1107,13 +1097,6 @@ namespace Olly {
 	expression::~expression() {
 	}
 
-	stream_t& operator >> (stream_t& stream, expression& self) {
-
-		self = expression();
-
-		return stream;
-	}
-
 	std::string __type__(const expression& self) {
 		return "expression";
 	}
@@ -1156,7 +1139,11 @@ namespace Olly {
 			return;
 		}
 
+		out << "(";
+
 		out << str(self._list);
+
+		out << ")";
 	}
 
 	void __repr__(stream_t& out, const expression& self) {
@@ -1166,7 +1153,11 @@ namespace Olly {
 			return;
 		}
 
+		out << "(";
+
 		out << repr(self._list);
+
+		out << ")";
 	}
 
 	int_t __len__(const expression& self) {
