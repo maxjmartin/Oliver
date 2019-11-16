@@ -53,16 +53,20 @@ namespace Olly {
 #if _WIN32 || _WIN64
 #if _WIN64
 	using int_t = long int;
+	static const int ITERATION_LIMIT = 64;
 #else
 	using int_t = int;
+	static const int ITERATION_LIMIT = 32;
 #endif
 #endif
 
 #if __GNUC__
 #if __x86_64__ || __ppc64__
 	using int_t = long int;
+	static const int ITERATION_LIMIT = 64;
 #else
 	using int_t = int;
+	static const int ITERATION_LIMIT = 32;
 #endif
 #endif
 
@@ -292,36 +296,80 @@ namespace Olly {
 	//			
 	/********************************************************************************************/
 
+	static const enum OP_CODES {
+		NONE_OP = 0,
+		PRINT_OP, print_OP, REPR_OP, repr_OP,
+		LEAD_OP, SHIFT_OP, PLACE_OP, lead_OP, shift_OP, place_OP, let_OP, const_OP,
+		EQ_OP, NE_OP, LT_OP, LE_OP, GT_OP, GE_OP,
+		IN_EQ_OP, IN_NE_OP, IN_LT_OP, IN_LE_OP, IN_GT_OP, IN_GE_OP,
+		IS_TRUE_OP, IF_TRUE_OP, AND_OP, OR_OP, XOR_OP, NOT_OP, 
+		if_OP, and_OP, or_OP, not_OP, xor_OP,
+		ADD_OP, SUB_OP, MUL_OP, DIV_OP, MOD_OP, FDIV_OP,
+		add_OP, sub_OP, mul_OP, div_OP, mod_OP, fdiv_OP
+	};
+
 	static const std::map<str_t, int_t> OPERATORS = {
 
-		{ "lead",			 1 },
-		{ "shift",			 2 },
-		{ "place",			 3 },
-		{ "is?",			 4 },
-		{ "let",			 5 },
-		{ "const",			 6 },
-		{ "if",	    		 7 },
-		{ "print",	    	 8 },
+		{ "LEAD",		 LEAD_OP },
+		{ "SHIFT",		SHIFT_OP },
+		{ "PLACE",		PLACE_OP },
+		{ "lead",		 lead_OP },
+		{ "shift",		shift_OP },
+		{ "place",		place_OP },
+		{ "let",		  let_OP },
+		{ "const",		const_OP },
 
-		{ "EQ",			    11 },
-		{ "NE",			    12 },
-		{ "LT",			    13 },
-		{ "LE",			    14 },
-		{ "GT",			    15 },
-		{ "GE",			    16 },
+		{ "EQ",			EQ_OP },
+		{ "NE",			NE_OP },
+		{ "LT",			LT_OP },
+		{ "LE",			LE_OP },
+		{ "GT",			GT_OP },
+		{ "GE",			GE_OP },
 
-		{ "=",			    21 },
-		{ "!=",			    22 },
-		{ "<",			    23 },
-		{ "<=",			    24 },
-		{ ">",			    25 },
-		{ ">=",			    26 },
+		{ "=",			IN_EQ_OP },
+		{ "!=",			IN_NE_OP },
+		{ "<",			IN_LT_OP },
+		{ "<=",			IN_LE_OP },
+		{ ">",			IN_GT_OP },
+		{ ">=",			IN_GE_OP },
 
-		{ "STACK",			31 },
-		{ "CODE",			32 },
-		{ "VARS",			33 },
-		{ "CONSTS",			34 },
-		{ "CLEAR",			35 },
+		{ "?",			IS_TRUE_OP },
+		{ "THEN",		IF_TRUE_OP },
+		{ "AND",		    AND_OP },
+		{ "OR",			     OR_OP },
+		{ "NOT",		    NOT_OP },
+		{ "XOR",		    XOR_OP },
+
+		{ "if",			 if_OP },
+		{ "and",		and_OP },
+		{ "or",			 or_OP },
+		{ "not",		not_OP },
+		{ "xor",		xor_OP },
+
+		{ "ADD",		ADD_OP },
+		{ "SUB",		SUB_OP },
+		{ "MUL",		MUL_OP },
+		{ "DIV",		DIV_OP },
+		{ "MOD",		MOD_OP },
+		{ "DDIV",	   FDIV_OP },
+
+		{ "+",			add_OP },
+		{ "-",			sub_OP },
+		{ "*",			mul_OP },
+		{ "/",			div_OP },
+		{ "mod",		mod_OP },
+		{ "fdiv",	   fdiv_OP },
+
+		{ "PRINT",	    PRINT_OP },
+		{ "print",	    print_OP },
+		{ "REPR",	     REPR_OP },
+		{ "repr",	     repr_OP },
+
+		{ "STACK",			310 },
+		{ "CODE",			320 },
+		{ "VARS",			330 },
+		{ "CONSTS",			340 },
+		{ "CLEAR",			350 },
 
 		{ "first",			 10000 },
 		{ "second",		     40000 },
@@ -332,161 +380,7 @@ namespace Olly {
 		{ "DUP",			220000 },
 		{ "SWAP",			230000 },
 		{ "ROLL",			240000 },
-		{ "BUFF",			250000 },
-
-		{ "ADD",			310000 },
-		{ "SUB",			320000 },
-
-		{ "=",			   1010000 },
-
-		/*
-		{ "LEAD",        1 },
-		{ "LAST",        2 },
-		{ "L_SHIFT",     3 },
-		{ "R_SHIFT",     4 },
-		{ "PLACE",       5 },
-		{ "PUSH",        6 },
-		{ "STACK",       7 },
-		{ "LEN",         8 },
-		{ "REVERSE",     9 },
-		{ "CLEAR",      10 },
-
-		{ "const",      11 },
-		{ "def",        12 },
-		{ "lambda",     13 },
-		{ "if",         14 },
-		{ "else",       15 },
-		{ "while",      16 },
-		{ "do",         17 },
-		{ "for",        18 },
-		{ "DEF",        19 },
-		{ "#",          20 },
-		{ ".",          21 },
-		{ "self",       22 },
-		{ "EMIT",       23 },
-		{ "print",      24 },
-		{ "pstack",     25 },
-		{ "pcode",      26 },
-		{ "null",       27 },
-		{ "now",        28 },
-		{ "input",      29 },
-
-		{ "bool",      31 },
-		{ "date",      32 },
-		{ "polar",     33 },
-		{ "regex",     34 },
-		{ "type",      35 },
-		{ "rand",      36 },
-
-		{ "term",      41 },
-		{ "term?",     42 },       // A small (probably apocryphal) tribute to Douglas Adams.
-		{ "weight",    43 },
-		{ "weight?",   44 },
-
-		{ "hash",      51 },
-		{ "str",       52 },
-		{ "rpr",       53 },
-		{ "int",       54 },
-		{ "real",      55 },
-		{ "complex",   56 },
-
-		{ "comp",      61 },
-		{ "==",        62 },
-		{ "!=",        63 },
-		{ ">=",        64 },
-		{ ">",         65 },
-		{ "<=",        67 },
-		{ "<",         68 },
-
-		{ "is",        71 },
-		{ "and",       72 },
-		{ "or",        73 },
-		{ "xor",       74 },
-		{ "not",       75 },
-
-		{ "&",         81 },
-		{ "|",         82 },
-		{ "^",         83 },
-		{ "~",         84 },
-		{ "<<",        85 },
-		{ ">>",        86 },
-
-		{ "lead",      91 },
-		{ "last",      92 },
-		{ "shift",     93 },
-		{ "slide",     94 },
-		{ "place",     95 },
-		{ "push",      96 },
-
-		{ "card",      101 },
-		{ "len",       102 },
-		{ "reverse",   103 },
-		{ "find",      104 },
-		{ "has",       105 },
-		{ "slice",     106 },
-
-		{ "ADD",       111 },
-		{ "SUB",       112 },
-		{ "MUL",       113 },
-		{ "DIV",       114 },
-		{ "MOD",       115 },
-		{ "POW",       116 },
-		{ "FDIV",      117 },
-		{ "REM",       118 },
-		{ "INC",       126 },
-		{ "DEC",       127 },
-
-		{ "abs",       121 },
-		{ "ceil",      122 },
-		{ "floor",     123 },
-		{ "max",       124 },
-		{ "min",       125 },
-		{ "inc",       126 },
-		{ "dec",       127 },
-
-		{ "exp",       131 },
-		{ "exp2",      132 },
-		{ "log",       133 },
-		{ "log10",     134 },
-		{ "log2",      135 },
-		{ "sqrt",      136 },
-		{ "cbrt",      137 },
-
-		{ "sin",       141 },
-		{ "cos",       142 },
-		{ "tan",       143 },
-		{ "asin",      144 },
-		{ "acos",      145 },
-		{ "atan",      146 },
-
-		{ "sinh",      151 },
-		{ "cosh",      152 },
-		{ "tanh",      153 },
-		{ "asinh",     154 },
-		{ "acosh",     155 },
-		{ "atanh",     156 },
-
-		{ "hypot",     161 },
-		{ "atan2",     162 },
-		{ "divmod",    163 },
-		{ "phase",     164 },
-		{ "norm",      165 },
-		{ "conj",      166 },
-		{ "proj",      167 },
-
-		{ "finite?",   171 },
-		{ "inf?",      172 },
-		{ "nan?",      173 },
-		{ "negative?", 174 },
-		{ "positive?", 175 },
-		{ "normal?",   176 },
-		{ "complex?",  177 },
-
-		{ "match",     181 },
-		{ "search",    182 },
-		{ "replace",   183 },
-		{ "split",     184 },
-		*/
+		{ "BUFF",			250000 }
 	};
 
 } // end Olly

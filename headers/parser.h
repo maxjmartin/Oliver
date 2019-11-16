@@ -445,6 +445,13 @@ namespace Olly {
 			return;
 		}
 
+		if (word == "else") {
+			let else_statement = expression(boolean(true));
+
+			exp = exp.place(else_statement);
+			return;
+		}
+
 		if (word == "function") {
 
 			let func = expression();
@@ -472,7 +479,8 @@ namespace Olly {
 
 				compile(word, code, e);
 			}
-			
+			word = "";
+
 			exp = exp.place(e.reverse());
 
 			return;
@@ -488,6 +496,7 @@ namespace Olly {
 
 				compile(word, code, l);
 			}
+			word = "";
 
 			exp = exp.place(l.reverse());
 
@@ -501,12 +510,22 @@ namespace Olly {
 			if (it != OPERATORS.end()) {
 
 				exp = exp.place(op_call(it->second));
+				return;
 			}
 
-			else {
-				exp = exp.place(symbol(word));
+			str_t upper_case = to_upper(word);
+
+			if (upper_case == "TRUE"  || upper_case == "FALSE" || 
+				upper_case == "1"     || upper_case == "0"     ||
+				upper_case == "UNDEF" || upper_case == "UNDEFINED") {
+
+				exp = exp.place(boolean(upper_case));
+				return;
 			}
+
+			exp = exp.place(symbol(word));
 		}
+		return;
 	}
 
 	str_t parser::get_file_name() const {
@@ -589,8 +608,7 @@ namespace Olly {
 			return;
 		}
 
-		if (word != "") {
-
+		else if (word != "") {
 			_text.push_back(word);
 		}
 	}

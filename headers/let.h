@@ -106,6 +106,7 @@ namespace Olly {
 		let              get(const let& key)                            const;
 		let              set(const let& key, const let& val)            const;
 
+		bool_t    expression()                                          const;
 		bool_t     interable()                                          const;
 		bool_t       nothing()						                    const;
 		bool_t        atomic()                                          const;
@@ -180,6 +181,7 @@ namespace Olly {
 			virtual let          __get(const let& key)                            const = 0;
 			virtual let          __set(const let& key, const let& val)            const = 0;
 
+			virtual bool_t       __expression()                                   const = 0;
 			virtual bool_t       __interable()                                    const = 0;
 			virtual bool_t       __nothing()					                  const = 0;
 			virtual bool_t       __atomic()                                       const = 0;
@@ -242,6 +244,7 @@ namespace Olly {
 			let          __get(const let& key)                            const;
 			let          __set(const let& key, const let& val)            const;
 
+			bool_t       __expression()                                   const;
 			bool_t       __interable()                                    const;
 			bool_t       __nothing()						              const;
 			bool_t       __atomic()	     					              const;
@@ -365,6 +368,8 @@ namespace Olly {
 		friend let            __place__(const expression& self, const let& other);
 		friend let            __shift__(const expression& self);
 		friend let          __reverse__(const expression& self);
+
+		friend bool_t    __expression__(const expression& self);
 	};
 
 	/********************************************************************************************/
@@ -388,12 +393,14 @@ namespace Olly {
 	/********************************************************************************************/
 
 	struct environment {
-		let constants;
-		let variables;
-		let return_stack;
+		let   constants;
+		let   variables;
+		let   return_stack;
+		int_t iter_limit;
 
 		environment();
-		environment(let c, let v, let s);
+		environment(int_t l);
+		environment(let c, let v, let s, int_t l);
 	};
 
 	/********************************************************************************************/
@@ -485,10 +492,13 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	environment::environment() : constants(expression()), variables(expression()), return_stack(expression()) {
+	environment::environment() : constants(expression()), variables(expression()), return_stack(expression()), iter_limit(0) {
 	}
 
-	environment::environment(let c, let v, let s) : constants(c), variables(v), return_stack(s) {
+	environment::environment(int_t l) : constants(expression()), variables(expression()), return_stack(expression()), iter_limit(l) {
+	}
+
+	environment::environment(let c, let v, let s, int_t l) : constants(c), variables(v), return_stack(s), iter_limit(l) {
 	}
 
 	/********************************************************************************************/
@@ -756,6 +766,15 @@ namespace Olly {
 	template<typename T>
 	let __set__(const T& self, const let& other, const let& val) {
 		return null();
+	}
+
+
+	template<typename T>            /****  Is A interable  ****/
+	bool_t __expression__(const T& self);
+
+	template<typename T>
+	bool_t __expression__(const T& self) {
+		return false;
 	}
 
 
@@ -1211,6 +1230,10 @@ namespace Olly {
 		return e;
 	}
 
+	bool_t __expression__(const expression& self) {
+		return true;
+	}
+
 	/********************************************************************************************/
 	//
 	//                                'let' Class Implementation
@@ -1381,6 +1404,10 @@ namespace Olly {
 
 	let let::set(const let& other, const let& val) const {
 		return _self->__set(other, val);
+	}
+
+	bool_t let::expression() const {
+		return _self->__expression();
 	}
 
 	bool_t let::interable() const {
@@ -1607,6 +1634,11 @@ namespace Olly {
 	template <typename T>
 	let let::data_t<T>::__set(const let& key, const let& val) const {
 		return __set__(_data, key, val);
+	}
+
+	template <typename T>
+	bool_t let::data_t<T>::__expression() const {
+		return __expression__(_data);
 	}
 
 	template <typename T>

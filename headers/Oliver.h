@@ -22,7 +22,7 @@
 /********************************************************************************************/
 
 #include "let.h"
-#include "eval_functions.h"
+#include "eval_support_functions.h"
 
 namespace Olly {
 
@@ -47,8 +47,6 @@ namespace Olly {
 
 	inline let         eval_expression  (environment& env, let& exp);
 	       lambda_t  __eval_expression__(environment  env, let  exp);
-
-	inline let         eval_function(let& func, environment& env, let& exp);
 
 	/********************************************************************************************/
 	//
@@ -137,7 +135,11 @@ namespace Olly {
 
 			let value = pop_lead(exp);
 
-			env.variables = set_variable(env.variables, pop_lead(keys), value);
+			value = eval_expression(env, value).lead();
+
+			let key = pop_lead(keys);
+
+			env.variables = set_variable(env.variables, key, value);
 		}
 
 		return eval(env, self._body);
@@ -150,22 +152,37 @@ namespace Olly {
 	/********************************************************************************************/
 
 	inline let eval(let& exp) {
-		return trampoline(__eval_expression__(environment(), exp));
+		return trampoline(__eval_expression__(environment(ITERATION_LIMIT), exp));
 	}
 
 	inline lambda_t eval(environment env, let exp) {
 		return lambda_t(closure_t(__eval_expression__, env, exp), null(), false);
 	}
 
-	inline let eval_function(let& func, environment& env, let& exp) {
-		return trampoline(func.eval(env, exp));
-	}
-
 	inline let eval_expression(environment& env, let& exp) {
-		return trampoline(__eval_expression__(env, exp));
+		/*
+			The eval_expression function defines a completly
+			new trampoline stack.  In practice this should
+			typically only be invoked a few times preventing
+			a segmentation fault.  But in reality we want to
+			protect against that by enforcing an interation
+			limit against internal invocations of this function.  
+		*/
+
+		env.iter_limit -= 1;
+
+		let result = (env.iter_limit > 0) ? trampoline(__eval_expression__(env, exp)) : null();
+
+		env.iter_limit += 1;
+
+		return result;
 	}
 
 	lambda_t __eval_expression__(environment env, let exp) {
+
+		if (env.iter_limit <= 0) {
+			return result(null());
+		}
 
 		if (expression_is_empty(exp)) {
 			/*
@@ -175,25 +192,21 @@ namespace Olly {
 			return result(env.return_stack);
 		}
 
-		let a = pop_lead(exp);
+		let a = exp.expression() ? pop_lead(exp) : exp;
 
-		str_t t_name = a.type();
-
-		while (t_name == "symbol") {
+		while (a.type() == "symbol") {
 			a = get_symbol(env, a);
-			t_name = a.type();
 		}
 
-		if (t_name == "expression") {
-
-			env.return_stack = eval_expression(env, a);
+		if (a.type() == "expression") {
+			return eval(env, a);
 		}
 
-		else if (t_name == "function") {
-			env.return_stack = eval_function(a, env, exp);
+		else if (a.type() == "function") {
+			return a.eval(env, exp);
 		}
 
-		else if (t_name != "op_call") {
+		else if (a.type() != "op_call") {
 			env.return_stack = env.return_stack.place(a);
 		}
 
@@ -201,31 +214,82 @@ namespace Olly {
 
 			switch (a.integer()) {
 
-			case 1:	// lead
+			case PRINT_OP:
+				PRINT(env, exp);
+				break;
+
+			case print_OP:
 			{
-				env.return_stack = env.return_stack.place(pop_lead(exp).lead());
+				let args = expression(pop_lead(exp));
+				args = eval_expression(env, args).reverse();
+				print(env, args);
 			}	break;
 
-			case 2:	// shift
+			case REPR_OP:
+				REPR(env, exp);
+				break;
+
+			case repr_OP:
 			{
-				env.return_stack = env.return_stack.place(pop_lead(exp).shift());
+				let args = expression(pop_lead(exp));
+				args = eval_expression(env, args).reverse();
+				repr(env, args);
 			}	break;
 
-			case 3:	// place
+			case LEAD_OP:
+			{
+				let l = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(l.lead());
+			}	break;
+
+			case SHIFT_OP:
+			{
+				let l = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(l.shift());
+			}	break;
+
+			case PLACE_OP:
+			{
+				let l = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				l = l.place(x);
+
+				env.return_stack = env.return_stack.place(l);
+			}	break;
+
+			case lead_OP:
+			{
+				let l = pop_lead(exp);
+
+				exp = exp.place(op_call(LEAD_OP));
+				exp = exp.place(l);
+			}	break;
+
+			case shift_OP:
+			{
+				let l = pop_lead(exp);
+
+				exp = exp.place(op_call(SHIFT_OP));
+				exp = exp.place(l);
+			}	break;
+
+			case place_OP:
 			{
 				let x = pop_lead(exp);
-				env.return_stack = env.return_stack.place(pop_lead(exp).place(x));
+				let l = pop_lead(exp);
+
+				exp = exp.place(op_call(PLACE_OP));
+				exp = exp.place(l);
+				exp = exp.place(x);
 			}	break;
 
-			case 4:	// is?
+			case let_OP:
 			{
-				env.return_stack = env.return_stack.place(boolean(pop_lead(exp).is()));
-			}	break;
-
-			case 5:	// let
-			{
-				let   key = pop_lead(exp);
-				str_t op = str(pop_lead(exp));
+				let   key   = pop_lead(exp);
+				str_t op    = str(pop_lead(exp));
 				let   value = pop_lead(exp);
 
 				if (op == "=") {
@@ -233,21 +297,10 @@ namespace Olly {
 				}
 			}	break;
 
-			case 6:	// const
+			case const_OP:	
 			{
-				let   key = pop_lead(exp);
-				str_t op = str(pop_lead(exp));
-				let   value = pop_lead(exp);
-
-				if (op == "=") {
-					env.constants= set_constant(env.constants, key, value);
-				}
-			}	break;
-
-			case 7:	// if
-			{
-				let   key = pop_lead(exp);
-				str_t op = str(pop_lead(exp));
+				let   key   = pop_lead(exp);
+				str_t op    = str(pop_lead(exp));
 				let   value = pop_lead(exp);
 
 				if (op == "=") {
@@ -255,128 +308,322 @@ namespace Olly {
 				}
 			}	break;
 
-			case 8:	// print
-			{
-				let args = expression(pop_lead(exp));
-
-				args = eval_expression(env, args).reverse();
-				
-				stream_t stream;
-
-				stream << std::boolalpha;
-
-				while (args.is()) {
-					pop_lead(args).str(stream);
-				}
-
-				std::cout << stream.str();
-			}	break;
-
-			case 11: // EQ (Equility)
+			case EQ_OP: 
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x == y));
 			}	break;
 
-			case 12: // NE (Postfix Non Equility)
+			case NE_OP:
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x != y));
 			}	break;
 
-			case 13: // LT (Postfix Less Than)
+			case LT_OP: 
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x < y));
 			}	break;
 
-			case 14: // LE (Postfix Less Than Equal)
+			case LE_OP: 
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x <= y));
 			}	break;
 
-			case 15: // GT (Postfix Greater Than)
+			case GT_OP: 
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x > y));
 			}	break;
 
-			case 16: // GE (Postfix Greater Than Equal)
+			case GE_OP: 
 			{
 				let y = pop_lead(env.return_stack);
 				let x = pop_lead(env.return_stack);
+
 				env.return_stack = env.return_stack.place(boolean(x >= y));
 			}	break;
 
-			case 21: // = (Prefix Equility)
+			case IN_EQ_OP:
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("EQ"));
+
+				exp = exp.place(op_call(EQ_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 22: // != (Prefix Non Equility)
+			case IN_NE_OP: 
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("NE"));
+
+				exp = exp.place(op_call(NE_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 23: // < (Prefix Less Than)
+			case IN_LT_OP:
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("LT"));
+
+				exp = exp.place(op_call(LT_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 24: // <= (Prefix Less Than Equal)
+			case IN_LE_OP:
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("LE"));
+
+				exp = exp.place(op_call(LE_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 25: // > (Prefix Greater Than)
+			case IN_GT_OP: 
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("GT"));
+
+				exp = exp.place(op_call(GT_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 26: // >= (Prefix Greater Than Equal)
+			case IN_GE_OP:
 			{
 				let x = pop_lead(exp);
-				exp = exp.place(op_call("GE"));
+
+				exp = exp.place(op_call(GE_OP));
 				exp = exp.place(x);
 			}	break;
 
-			case 31: // STACK
+			case IS_TRUE_OP:
+			{
+				let truth = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(boolean(truth.is()));
+			} break;
+
+			case IF_TRUE_OP:
+			{
+				let truth = pop_lead(env.return_stack);
+
+				let then = pop_lead(exp);
+
+				if (truth.is()) {
+					exp = exp.place(then);
+				}
+			} break;
+
+			case AND_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(boolean(x.is() && y.is()));
+			}	break;
+
+			case OR_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(boolean(x.is() || y.is()));
+			}	break;
+
+			case NOT_OP:
+			{
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(boolean(!x.is()));
+			}	break;
+
+			case XOR_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				int_t truth = static_cast<int_t>(x.is()) ^ static_cast<int_t>(y.is());
+
+				env.return_stack = env.return_stack.place(boolean(truth));
+			}	break;
+
+			case if_OP:
+			{
+				let conditions = pop_lead(exp);
+
+				while (conditions.is()) {
+
+					let condition = pop_lead(conditions);
+
+					let truth = eval_expression(env, condition);
+
+					if (truth.lead().is()) {
+						exp = exp.place(conditions.lead());
+						conditions = expression();
+					}
+					else {
+						conditions = conditions.shift();
+					}
+				}
+			}	break;
+
+			case and_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(AND_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case or_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(OR_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case not_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(NOT_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case xor_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(XOR_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case ADD_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x + y);
+			}	break;
+
+			case SUB_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x - y);
+			}	break;
+
+			case MUL_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x * y);
+			}	break;
+
+			case DIV_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x / y);
+			}	break;
+
+			case MOD_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x % y);
+			}	break;
+
+			case FDIV_OP:
+			{
+				let y = pop_lead(env.return_stack);
+				let x = pop_lead(env.return_stack);
+
+				env.return_stack = env.return_stack.place(x.f_div(y));
+			}	break;
+
+			case add_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(ADD_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case sub_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(SUB_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case mul_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(MUL_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case div_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(DIV_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case mod_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(MOD_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case fdiv_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(FDIV_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case 310: // STACK
 			{
 				print("STACK = " + str(env.return_stack));
 			}	break;
 
-			case 32: // CODE
+			case 320: // CODE
 			{
 				print("CODE = " + str(exp));
 			}	break;
 
-			case 33: // VARS
+			case 330: // VARS
 			{
 				print("VARS = " + str(env.variables));
 			}	break;
 
-			case 34: // CONSTS
+			case 340: // CONSTS
 			{
 				print("CONSTS = " + str(env.constants));
 			}	break;
 
-			case 35: // CLEAR
+			case 350: // CLEAR
 			{
 				let op = pop_lead(exp);
 
@@ -458,51 +705,6 @@ namespace Olly {
 				break;
 			}
 		}
-
-		/*
-		while (t_name == "symbol") {
-
-
-		}
-
-		if (t_name == "function") {
-
-			var args = a.lead();
-			var body = a.shift();
-
-			// print(args);
-			// print(body);
-
-			var closure = expression();
-
-			while (args.is()) {
-				var x = pop_lead(args);
-				var y = pop_lead(expr);
-				var p = expression(x, y);
-				closure = closure.place(p);
-			}
-
-			// print(closure);
-
-			var new_envr = envr;
-
-			while (closure.is()) {
-				new_envr = new_envr.place(pop_lead(closure));
-			}
-
-			auto func = Lambda(Closure(__Oliver__, body, stack, new_envr), null(), false);
-
-			while (func.not_done()) {
-				func = func.lambda();
-			}
-
-			a = func.range();
-
-			t_name = a.type();
-		}
-
-		
-		*/
 
 		return eval(env, exp);
 	}

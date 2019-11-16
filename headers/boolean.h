@@ -47,6 +47,7 @@ namespace Olly {
 		boolean();
 		boolean(const boolean& obj);
 		boolean(std::string str);
+		boolean(const int_t& n, real_t t = 1.0);
 		boolean(const bool_t& n, real_t t = 1.0);
 		boolean(const real_t& n, real_t t = 1.0);
 		virtual ~boolean();
@@ -69,23 +70,34 @@ namespace Olly {
 
 	boolean::boolean(std::string str) : _term(0.0), _weight(1.0) {
 
-		if (str == "true" || str == "1") {
+		if (str == "TRUE" || str == "1") {
 
 			_term = 1.0;
 			return;
 		}
 
-		if (str == "false" || str == "0") {
+		if (str == "FALSE" || str == "0") {
 
 			_term = 0.0;
 			return;
 		}
 
-		if (str == "undef" || str == "undefined") {
+		if (str == "UNDEF" || str == "UNDEFINED") {
 
 			_term = NOT_A_NUMBER;
 			_weight = NOT_A_NUMBER;
 			return;
+		}
+	}
+
+	boolean::boolean(const int_t& n, real_t t) : _term(0.0), _weight(NOT_A_NUMBER) {
+
+		if (n) {
+			_term = 1.0;
+		}
+
+		if (t <= 1.0 && t >= 0) {
+			_weight = t;
 		}
 	}
 
