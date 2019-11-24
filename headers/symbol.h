@@ -56,6 +56,8 @@ namespace Olly {
 		friend void          __str__(stream_t& out, const op_call& self);
 		friend void         __repr__(stream_t& out, const op_call& self);
 		friend int_t     __integer__(const op_call& self);
+
+		friend bool_t    __op_call__(const op_call& self);
 	};
 
 
@@ -132,6 +134,10 @@ namespace Olly {
 		return self._value;
 	}
 
+	bool_t __op_call__(const op_call& self) {
+		return true;
+	}
+
 
 
 
@@ -164,6 +170,8 @@ namespace Olly {
 		friend real_t       __comp__(const symbol& self, const let& other);
 		friend void          __str__(stream_t& out, const symbol& self);
 		friend void         __repr__(stream_t& out, const symbol& self);
+
+		friend bool_t     __symbol__(const symbol& self);
 	};
 
 
@@ -213,6 +221,10 @@ namespace Olly {
 
 	void __repr__(stream_t& out, const symbol& self) {
 		__str__(out, self);
+	}
+
+	bool_t __symbol__(const symbol& self) {
+		return true;
 	}
 
 

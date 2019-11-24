@@ -109,6 +109,8 @@ namespace Olly {
 		bool_t    expression()                                          const;
 		bool_t     interable()                                          const;
 		bool_t       nothing()						                    const;
+		bool_t       op_call()                                          const;
+		bool_t        symbol()                                          const;
 		bool_t        atomic()                                          const;
 		bool_t           nan()                                          const;
 		bool_t       complex()                                          const;
@@ -129,8 +131,9 @@ namespace Olly {
 		let        operator%(const let& other)                          const;
 
 		int_t        integer()                                          const;
+		real_t          real()                                          const;
 
-		lambda_t      eval(const environment& env, let& exp)            const;
+		lambda_t      eval(environment& env, let& exp)                  const;
 
 	private:
 
@@ -184,6 +187,8 @@ namespace Olly {
 			virtual bool_t       __expression()                                   const = 0;
 			virtual bool_t       __interable()                                    const = 0;
 			virtual bool_t       __nothing()					                  const = 0;
+			virtual bool_t       __op_call()                                      const = 0;
+			virtual bool_t       __symbol()                                       const = 0;
 			virtual bool_t       __atomic()                                       const = 0;
 			virtual bool_t       __nan()                                          const = 0;
 			virtual bool_t       __complex()                                      const = 0;
@@ -191,8 +196,9 @@ namespace Olly {
 			virtual str_t        __help()                                         const = 0;
 
 			virtual int_t        __integer()                                      const = 0;
+			virtual real_t       __real()                                         const = 0;
 
-			virtual lambda_t       __eval(const environment& env, let& exp)       const = 0;
+			virtual lambda_t     __eval(environment& env, let& exp)               const = 0;
 		};
 
 		template <typename T>
@@ -247,6 +253,8 @@ namespace Olly {
 			bool_t       __expression()                                   const;
 			bool_t       __interable()                                    const;
 			bool_t       __nothing()						              const;
+			bool_t       __op_call()                                      const;
+			bool_t       __symbol()                                       const;
 			bool_t       __atomic()	     					              const;
 			bool_t       __nan()	     					              const;
 			bool_t       __complex()	     					          const;
@@ -254,8 +262,9 @@ namespace Olly {
 			str_t        __help()                                         const;
 
 			int_t        __integer()                                      const;
+			real_t       __real()                                         const;
 
-			lambda_t     __eval(const environment& env, let& exp)         const;
+			lambda_t     __eval(environment& env, let& exp)               const;
 
 			T            _data;
 		};
@@ -395,12 +404,12 @@ namespace Olly {
 	struct environment {
 		let   constants;
 		let   variables;
-		let   return_stack;
-		int_t iter_limit;
+		let   stack;
+		let   exp_queue;
+		let   func_queue;
 
 		environment();
-		environment(int_t l);
-		environment(let c, let v, let s, int_t l);
+		environment(let c, let v, let s, let e, let f);
 	};
 
 	/********************************************************************************************/
@@ -492,13 +501,20 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	environment::environment() : constants(expression()), variables(expression()), return_stack(expression()), iter_limit(0) {
+	environment::environment() : 
+		constants(expression()), 
+		variables(expression()), 
+		stack(expression()), 
+		exp_queue(expression()),
+		func_queue(expression()) {
 	}
 
-	environment::environment(int_t l) : constants(expression()), variables(expression()), return_stack(expression()), iter_limit(l) {
-	}
-
-	environment::environment(let c, let v, let s, int_t l) : constants(c), variables(v), return_stack(s), iter_limit(l) {
+	environment::environment(let c, let v, let s, let e, let f) : 
+		constants(c), 
+		variables(v), 
+		stack(s), 
+		exp_queue(e),
+		func_queue(f) {
 	}
 
 	/********************************************************************************************/
@@ -796,6 +812,24 @@ namespace Olly {
 	}
 
 
+	template<typename T>            /****  Is OP Call Type  ****/
+	bool_t __op_call__(const T& self);
+
+	template<typename T>
+	bool_t __op_call__(const T& self) {
+		return false;
+	}
+
+
+	template<typename T>            /****  Is Symbolic Type  ****/
+	bool_t __symbol__(const T& self);
+
+	template<typename T>
+	bool_t __symbol__(const T& self) {
+		return false;
+	}
+
+
 	template<typename T>            /****  Is Atomic Type  ****/
 	bool_t __atomic__(const T& self);
 
@@ -841,11 +875,20 @@ namespace Olly {
 	}
 
 
-	template<typename T>            /****  Invoke An Evaluation Call ****/
-	lambda_t __eval__(const T& self, const environment& env, let& exp);
+	template<typename T>            /****  Return An Real Number Representation ****/
+	real_t __real__(const T& self);
 
 	template<typename T>
-	lambda_t __eval__(const T& self, const environment& env, let& exp) {
+	real_t __real__(const T& self) {
+		return NOT_A_NUMBER;
+	}
+
+
+	template<typename T>            /****  Invoke An Evaluation Call ****/
+	lambda_t __eval__(const T& self, environment& env, let& exp);
+
+	template<typename T>
+	lambda_t __eval__(const T& self, environment& env, let& exp) {
 		return result(self);
 	}
 
@@ -1418,6 +1461,14 @@ namespace Olly {
 		return _self->__nothing();
 	}
 
+	bool_t let::op_call() const {
+		return _self->__op_call();
+	}
+
+	bool_t let::symbol() const {
+		return _self->__symbol();
+	}
+
 	bool_t let::atomic() const {
 		return _self->__atomic();
 	}
@@ -1482,7 +1533,11 @@ namespace Olly {
 		return _self->__integer();
 	}
 
-	lambda_t let::eval(const environment& env, let& exp) const {
+	real_t let::real() const {
+		return _self->__real();
+	}
+
+	lambda_t let::eval(environment& env, let& exp) const {
 		return _self->__eval(env, exp);
 	}
 
@@ -1652,6 +1707,16 @@ namespace Olly {
 	}
 
 	template <typename T>
+	bool_t let::data_t<T>::__op_call() const {
+		return __op_call__(_data);
+	}
+
+	template <typename T>
+	bool_t let::data_t<T>::__symbol() const {
+		return __symbol__(_data);
+	}
+
+	template <typename T>
 	bool_t let::data_t<T>::__atomic() const {
 		return __atomic__(_data);
 	}
@@ -1677,7 +1742,12 @@ namespace Olly {
 	}
 
 	template <typename T>
-	lambda_t let::data_t<T>::__eval(const environment& env, let& exp) const {
+	real_t let::data_t<T>::__real() const {
+		return __real__(_data);
+	}
+
+	template <typename T>
+	lambda_t let::data_t<T>::__eval(environment& env, let& exp) const {
 		return __eval__(_data, env, exp);
 	}
 

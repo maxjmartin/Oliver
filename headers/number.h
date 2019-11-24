@@ -85,6 +85,7 @@ namespace Olly {
 		friend bool_t  __complex__(const number& self);
 
 		friend int_t   __integer__(const number& self);
+		friend real_t     __real__(const number& self);
 
 	private:
 		num_t _value;
@@ -447,6 +448,11 @@ namespace Olly {
 	int_t __integer__(const number& self) {
 
 		return static_cast<int_t>(self._value.real());
+	}
+
+	real_t __real__(const number& self) {
+
+		return self._value.real();
 	}
 
 } // end

@@ -51,8 +51,9 @@ namespace Olly {
 	let  get_symbol(environment env, let key);
 	bool get_symbol(let variables, let key, let& value);
 
-	let set_variable(let variables, let key, let value);
-	let set_constant(let constants, let key, let value);
+	void   set_variable(environment& env, let& key, let& value);
+	void   set_constant(environment& env, let& key, let& value);
+	bool_t  is_constant(environment& env, let& key, let& value);
 
 	void PRINT(environment& env, let& exp);
 	void print(environment& env, let& exp);
@@ -101,9 +102,13 @@ namespace Olly {
 		return false;
 	}
 
-	let set_variable(let variables, let key, let value) {
+	void set_variable(environment& env, let& key, let& value) {
 		
-		let vars   = variables;
+		if (is_constant(env, key, value)) {
+			return;
+		}
+
+		let vars   = env.variables;
 		let buffer = expression();
 
 		while (vars.is()) {
@@ -116,20 +121,19 @@ namespace Olly {
 
 				vars = vars.place(pair);
 
-				return append_buffer(buffer, vars);
+				env.variables = append_buffer(buffer, vars);
+				return;
 			}
 
 			buffer = buffer.place(pair);
 		}
 
-		variables = variables.place(expression(key, value));
-
-		return variables;
+		env.variables = env.variables.place(expression(key, value));
 	}
 
-	let set_constant(let constants, let key, let value) {
+	void set_constant(environment& env, let& key, let& value) {
 
-		let vars = constants;
+		let vars = env.constants;
 
 		while (vars.is()) {
 
@@ -137,18 +141,34 @@ namespace Olly {
 
 			if (first(pair) == key) {
 
-				return constants;
+				return;
 			}
 		}
 
-		constants = constants.place(expression(key, value));
+		env.constants = env.constants.place(expression(key, value));
 
-		return constants;
+		return;
+	}
+
+	bool_t is_constant(environment& env, let& key, let& value) {
+
+		let vars = env.constants;
+
+		while (vars.is()) {
+
+			let pair = pop_lead(vars);
+
+			if (first(pair) == key) {
+
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void PRINT(environment& env, let& exp) {
 
-		let arg = pop_lead(env.return_stack);
+		let arg = pop_lead(env.stack);
 
 		stream_t stream;
 
@@ -174,7 +194,7 @@ namespace Olly {
 
 	void REPR(environment& env, let& exp) {
 
-		let arg = pop_lead(env.return_stack);
+		let arg = pop_lead(env.stack);
 
 		stream_t stream;
 

@@ -45,8 +45,8 @@ namespace Olly {
 	inline let         eval(let& exp);
 	inline lambda_t    eval(environment env, let exp);
 
-	inline let         eval_expression  (environment& env, let& exp);
-	       lambda_t  __eval_expression__(environment  env, let  exp);
+	inline let         eval_expression  (environment env, let& exp);
+	       lambda_t  __eval_expression__(environment env, let  exp);
 
 	/********************************************************************************************/
 	//
@@ -74,7 +74,7 @@ namespace Olly {
 		friend void             __str__(stream_t& out, const function& self);
 		friend void            __repr__(stream_t& out, const function& self);
 
-		friend lambda_t        __eval__(const function& self, environment env, let& exp);
+		friend lambda_t        __eval__(const function& self, environment& env, let& exp);
 	};
 
 	function::function() : _env(), _args(expression()), _body(expression()) {
@@ -127,7 +127,7 @@ namespace Olly {
 		out << "function" << repr(self._args) << repr(self._body);
 	}
 
-	lambda_t __eval__(const function& self, environment env, let& exp) {
+	lambda_t __eval__(const function& self, environment& env, let& exp) {
 
 		let keys = self._args; 
 
@@ -135,11 +135,18 @@ namespace Olly {
 
 			let value = pop_lead(exp);
 
-			value = eval_expression(env, value).lead();
+			value = eval_expression(env, value);
 
 			let key = pop_lead(keys);
 
-			env.variables = set_variable(env.variables, key, value);
+			set_variable(env, key, value);
+		}
+
+		if (!env.func_queue.is()) {
+			env.func_queue = env.func_queue.place(env.variables);
+			env.func_queue = env.func_queue.place(env.constants);
+			env.func_queue = env.func_queue.place(exp);
+			exp = expression();
 		}
 
 		return eval(env, self._body);
@@ -152,14 +159,32 @@ namespace Olly {
 	/********************************************************************************************/
 
 	inline let eval(let& exp) {
-		return trampoline(__eval_expression__(environment(ITERATION_LIMIT), exp));
+		environment env;
+
+		let res;
+
+		do {
+			res = trampoline(__eval_expression__(env, exp));
+
+			env.stack = first(res);
+
+			res = second(res);
+
+			exp = pop_lead(res);
+
+			env.constants = pop_lead(res);
+			env.variables = pop_lead(res);
+			
+		} while (exp.is());
+
+		return res;
 	}
 
 	inline lambda_t eval(environment env, let exp) {
 		return lambda_t(closure_t(__eval_expression__, env, exp), null(), false);
 	}
 
-	inline let eval_expression(environment& env, let& exp) {
+	inline let eval_expression(environment env, let& exp) {
 		/*
 			The eval_expression function defines a completly
 			new trampoline stack.  In practice this should
@@ -167,21 +192,23 @@ namespace Olly {
 			a segmentation fault.  But in reality we want to
 			protect against that by enforcing an interation
 			limit against internal invocations of this function.  
+
+			We also need to provide a new environment stack.
+			Else the current run time stack will be included
+			within the evaluated result.  
 		*/
 
-		env.iter_limit -= 1;
+		env.stack = expression();
 
-		let result = (env.iter_limit > 0) ? trampoline(__eval_expression__(env, exp)) : null();
-
-		env.iter_limit += 1;
+		let result = trampoline(__eval_expression__(env, exp)).lead();
 
 		return result;
 	}
 
 	lambda_t __eval_expression__(environment env, let exp) {
-
-		if (env.iter_limit <= 0) {
-			return result(null());
+		
+		if (!exp.expression()) {
+			return eval(env, expression(exp));
 		}
 
 		if (expression_is_empty(exp)) {
@@ -189,16 +216,27 @@ namespace Olly {
 				If there are no argumenta within the expression return the stack.
 				Passing a null lambda function, the stack and setting the runtime to true.
 			*/
-			return result(env.return_stack);
+			if (env.exp_queue.is()) {
+				return eval(env, pop_lead(env.exp_queue));
+			}
+
+			let res = expression();
+			res = res.place(env.func_queue);
+			res = res.place(env.stack);
+			
+			return result(res);
 		}
 
-		let a = exp.expression() ? pop_lead(exp) : exp;
+		let a = pop_lead(exp);
 
-		while (a.type() == "symbol") {
+		while (a.symbol()) {
 			a = get_symbol(env, a);
 		}
 
-		if (a.type() == "expression") {
+		if (a.expression()) {
+			if (exp.is()) {
+				env.exp_queue = env.exp_queue.place(exp);
+			}
 			return eval(env, a);
 		}
 
@@ -206,8 +244,8 @@ namespace Olly {
 			return a.eval(env, exp);
 		}
 
-		else if (a.type() != "op_call") {
-			env.return_stack = env.return_stack.place(a);
+		else if (!a.op_call()) {
+			env.stack = env.stack.place(a);
 		}
 
 		else {
@@ -238,26 +276,26 @@ namespace Olly {
 
 			case LEAD_OP:
 			{
-				let l = pop_lead(env.return_stack);
+				let l = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(l.lead());
+				env.stack = env.stack.place(l.lead());
 			}	break;
 
 			case SHIFT_OP:
 			{
-				let l = pop_lead(env.return_stack);
+				let l = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(l.shift());
+				env.stack = env.stack.place(l.shift());
 			}	break;
 
 			case PLACE_OP:
 			{
-				let l = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let l = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
 				l = l.place(x);
 
-				env.return_stack = env.return_stack.place(l);
+				env.stack = env.stack.place(l);
 			}	break;
 
 			case lead_OP:
@@ -288,72 +326,87 @@ namespace Olly {
 
 			case let_OP:
 			{
-				let   key   = pop_lead(exp);
-				str_t op    = str(pop_lead(exp));
-				let   value = pop_lead(exp);
-
-				if (op == "=") {
-					env.variables = set_variable(env.variables, key, value);
-				}
+				let var = pop_lead(exp);
+				env.stack = env.stack.place(var);
 			}	break;
 
-			case const_OP:	
+			case const_OP:
 			{
-				let   key   = pop_lead(exp);
-				str_t op    = str(pop_lead(exp));
-				let   value = pop_lead(exp);
+				let var = pop_lead(exp);
+				let op  = pop_lead(exp);
+				let val = pop_lead(exp);
 
-				if (op == "=") {
-					env.constants = set_constant(env.constants, key, value);
+				if (op.op_call() && op.integer() == IN_EQ_OP) {
+					set_constant(env, var, val);
+				}
+				else if (val.op_call() && val.integer() == EQ_OP) {
+					set_constant(env, var, op);
 				}
 			}	break;
 
 			case EQ_OP: 
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x == y));
+				if (x.symbol()) {
+					set_variable(env, x, y);
+				}
+				else if (x.expression()) {
+					let keys = x;
+					let values = y;
+
+					while (keys.is()) {
+						x = pop_lead(keys);
+						y = pop_lead(values);
+						if (x.symbol()) {
+							set_variable(env, x, y);
+						}
+					}
+				}
+				else {
+					env.stack = env.stack.place(boolean(x == y));
+				}
 			}	break;
 
 			case NE_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x != y));
+				env.stack = env.stack.place(boolean(x != y));
 			}	break;
 
 			case LT_OP: 
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x < y));
+				env.stack = env.stack.place(boolean(x < y));
 			}	break;
 
 			case LE_OP: 
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x <= y));
+				env.stack = env.stack.place(boolean(x <= y));
 			}	break;
 
 			case GT_OP: 
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x > y));
+				env.stack = env.stack.place(boolean(x > y));
 			}	break;
 
 			case GE_OP: 
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x >= y));
+				env.stack = env.stack.place(boolean(x >= y));
 			}	break;
 
 			case IN_EQ_OP:
@@ -362,6 +415,12 @@ namespace Olly {
 
 				exp = exp.place(op_call(EQ_OP));
 				exp = exp.place(x);
+
+				let l = env.stack.lead();
+
+				if (l.expression() || l.symbol()) {
+					exp = exp.place(op_call(let_OP));
+				}
 			}	break;
 
 			case IN_NE_OP: 
@@ -406,14 +465,14 @@ namespace Olly {
 
 			case IS_TRUE_OP:
 			{
-				let truth = pop_lead(env.return_stack);
+				let truth = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(truth.is()));
+				env.stack = env.stack.place(boolean(truth.is()));
 			} break;
 
 			case IF_TRUE_OP:
 			{
-				let truth = pop_lead(env.return_stack);
+				let truth = pop_lead(env.stack);
 
 				let then = pop_lead(exp);
 
@@ -424,35 +483,35 @@ namespace Olly {
 
 			case AND_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x.is() && y.is()));
+				env.stack = env.stack.place(boolean(x.is() && y.is()));
 			}	break;
 
 			case OR_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(x.is() || y.is()));
+				env.stack = env.stack.place(boolean(x.is() || y.is()));
 			}	break;
 
 			case NOT_OP:
 			{
-				let x = pop_lead(env.return_stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(boolean(!x.is()));
+				env.stack = env.stack.place(boolean(!x.is()));
 			}	break;
 
 			case XOR_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
 				int_t truth = static_cast<int_t>(x.is()) ^ static_cast<int_t>(y.is());
 
-				env.return_stack = env.return_stack.place(boolean(truth));
+				env.stack = env.stack.place(boolean(truth));
 			}	break;
 
 			case if_OP:
@@ -509,50 +568,66 @@ namespace Olly {
 
 			case ADD_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x + y);
+				env.stack = env.stack.place(x + y);
 			}	break;
 
 			case SUB_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x - y);
+				env.stack = env.stack.place(x - y);
 			}	break;
 
 			case MUL_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x * y);
+				env.stack = env.stack.place(x * y);
 			}	break;
 
 			case DIV_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x / y);
+				env.stack = env.stack.place(x / y);
 			}	break;
 
 			case MOD_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x % y);
+				env.stack = env.stack.place(x % y);
 			}	break;
 
 			case FDIV_OP:
 			{
-				let y = pop_lead(env.return_stack);
-				let x = pop_lead(env.return_stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
 
-				env.return_stack = env.return_stack.place(x.f_div(y));
+				env.stack = env.stack.place(x.f_div(y));
+			}	break;
+
+			case REM_OP:
+			{
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
+
+				env.stack = env.stack.place(x.rem(y));
+			}	break;
+
+			case POW_OP:
+			{
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
+
+				env.stack = env.stack.place(x.pow(y));
 			}	break;
 
 			case add_OP:
@@ -603,9 +678,60 @@ namespace Olly {
 				exp = exp.place(x);
 			}	break;
 
+			case rem_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(REM_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case pow_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(POW_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case GET_OP:
+			{
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
+
+				env.stack = env.stack.place(x.get(y));
+			}	break;
+
+			case SET_OP:
+			{
+				let z = pop_lead(env.stack);
+				let y = pop_lead(env.stack);
+				let x = pop_lead(env.stack);
+
+				env.stack = env.stack.place(x.set(y, z));
+			}	break;
+
+			case get_OP:
+			{
+				let x = pop_lead(exp);
+
+				exp = exp.place(op_call(GET_OP));
+				exp = exp.place(x);
+			}	break;
+
+			case set_OP:
+			{
+				let x = pop_lead(exp);
+				let y = pop_lead(exp);
+
+				exp = exp.place(op_call(SET_OP));
+				exp = exp.place(y);
+				exp = exp.place(x);
+			}	break;
+
 			case 310: // STACK
 			{
-				print("STACK = " + str(env.return_stack));
+				print("STACK = " + str(env.stack));
 			}	break;
 
 			case 320: // CODE
@@ -627,12 +753,12 @@ namespace Olly {
 			{
 				let op = pop_lead(exp);
 
-				if (op.type() == "op_call") {
+				if (op.op_call()) {
 
 					switch (op.integer()) {
 
 					case 31:
-						env.return_stack = expression();
+						env.stack = expression();
 						break;
 
 					case 32:

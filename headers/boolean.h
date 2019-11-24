@@ -22,6 +22,7 @@
 /********************************************************************************************/
 
 #include "let.h"
+#include "number.h"
 
 namespace Olly {
 
@@ -59,6 +60,9 @@ namespace Olly {
 		friend real_t        __comp__(const boolean& self, const let& other);
 		friend void           __str__(std::stringstream& out, const boolean& self);
 		friend void          __repr__(std::stringstream& out, const boolean& self);
+
+		friend let            __get__(const boolean& self, const let& key);
+		friend let            __set__(const boolean& self, const let& key, const let& value);
 	};
 
 
@@ -179,6 +183,36 @@ namespace Olly {
 	void __repr__(std::stringstream& out, const boolean& self) {
 
 		out << "('" << self._term << "' '" << self._weight << "' _bool)";
+	}
+
+	let __get__(const boolean& self, const let& key) {
+
+		str_t k = to_upper(str(key));
+
+		if (k == "TERM") {
+			return number(self._term);
+		}
+
+		if (k == "WEIGHT") {
+			return number(self._weight);
+		}
+
+		return number("nan");
+	}
+
+	let __set__(const boolean& self, const let& key, const let& value) {
+
+		str_t k = to_upper(str(key));
+
+		if (k == "TERM") {
+			return boolean(value.real(), self._weight);
+		}
+
+		if (k == "WEIGHT") {
+			return boolean(self._term, value.real());
+		}
+
+		return self;
 	}
 
 } // end

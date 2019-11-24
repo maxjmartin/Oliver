@@ -53,20 +53,16 @@ namespace Olly {
 #if _WIN32 || _WIN64
 #if _WIN64
 	using int_t = long int;
-	static const int ITERATION_LIMIT = 64;
 #else
 	using int_t = int;
-	static const int ITERATION_LIMIT = 32;
 #endif
 #endif
 
 #if __GNUC__
 #if __x86_64__ || __ppc64__
 	using int_t = long int;
-	static const int ITERATION_LIMIT = 64;
 #else
 	using int_t = int;
-	static const int ITERATION_LIMIT = 32;
 #endif
 #endif
 
@@ -299,16 +295,23 @@ namespace Olly {
 	static const enum OP_CODES {
 		NONE_OP = 0,
 		PRINT_OP, print_OP, REPR_OP, repr_OP,
-		LEAD_OP, SHIFT_OP, PLACE_OP, lead_OP, shift_OP, place_OP, let_OP, const_OP,
+		LEAD_OP, SHIFT_OP, PLACE_OP, lead_OP, shift_OP, place_OP, 
+		ASSIGN_OP, CONST_OP, let_OP, const_OP,
 		EQ_OP, NE_OP, LT_OP, LE_OP, GT_OP, GE_OP,
 		IN_EQ_OP, IN_NE_OP, IN_LT_OP, IN_LE_OP, IN_GT_OP, IN_GE_OP,
 		IS_TRUE_OP, IF_TRUE_OP, AND_OP, OR_OP, XOR_OP, NOT_OP, 
 		if_OP, and_OP, or_OP, not_OP, xor_OP,
-		ADD_OP, SUB_OP, MUL_OP, DIV_OP, MOD_OP, FDIV_OP,
-		add_OP, sub_OP, mul_OP, div_OP, mod_OP, fdiv_OP
+		ADD_OP, SUB_OP, MUL_OP, DIV_OP, MOD_OP, FDIV_OP, REM_OP, POW_OP,
+		add_OP, sub_OP, mul_OP, div_OP, mod_OP, fdiv_OP, rem_OP, pow_OP,
+		GET_OP, SET_OP, get_OP, set_OP
 	};
 
 	static const std::map<str_t, int_t> OPERATORS = {
+
+		{ "PRINT",	    PRINT_OP },
+		{ "print",	    print_OP },
+		{ "REPR",	     REPR_OP },
+		{ "repr",	     repr_OP },
 
 		{ "LEAD",		 LEAD_OP },
 		{ "SHIFT",		SHIFT_OP },
@@ -316,6 +319,7 @@ namespace Olly {
 		{ "lead",		 lead_OP },
 		{ "shift",		shift_OP },
 		{ "place",		place_OP },
+
 		{ "let",		  let_OP },
 		{ "const",		const_OP },
 
@@ -351,7 +355,9 @@ namespace Olly {
 		{ "MUL",		MUL_OP },
 		{ "DIV",		DIV_OP },
 		{ "MOD",		MOD_OP },
-		{ "DDIV",	   FDIV_OP },
+		{ "FDIV",	   FDIV_OP },
+		{ "REM",	    REM_OP },
+		{ "POW",	    POW_OP },
 
 		{ "+",			add_OP },
 		{ "-",			sub_OP },
@@ -359,11 +365,13 @@ namespace Olly {
 		{ "/",			div_OP },
 		{ "mod",		mod_OP },
 		{ "fdiv",	   fdiv_OP },
+		{ "rem",		rem_OP },
+		{ "pow",		pow_OP },
 
-		{ "PRINT",	    PRINT_OP },
-		{ "print",	    print_OP },
-		{ "REPR",	     REPR_OP },
-		{ "repr",	     repr_OP },
+		{ "GET",		GET_OP },
+		{ "SET",		SET_OP },
+		{ "get",		get_OP },
+		{ "set",		set_OP },
 
 		{ "STACK",			310 },
 		{ "CODE",			320 },
