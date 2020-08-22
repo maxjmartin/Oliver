@@ -21,16 +21,17 @@
 //			
 /********************************************************************************************/
 
+#include <regex>
+#include <string>
 #include "token_reader.h"
 #include "text_reader.h"
-#include "file_writer.h"
 
-#include "list.h"
-#include "boolean.h"
-#include "number.h"
-#include "string.h"
-#include "symbol.h"
-#include "Oliver.h"
+#include "..\types\list.h"
+#include "..\types\boolean.h"
+#include "..\types\number.h"
+#include "..\types\string.h"
+#include "..\types\symbol.h"
+#include "..\Oliver.h"
 
 namespace Olly {
 
@@ -46,33 +47,29 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
+	typedef		std::regex		regex_t;
+
+	static const regex_t  REAL_REGEX("((\\+|-)?[[:digit:]]+)(\\.(([[:digit:]]+)?))?((e|E)((\\+|-)?)[[:digit:]]+)?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
+
 	class parser {
 
-		text_reader    _input;    // The lexical code file to parse.
-		tokens_t       _text;	  // The parsed code read from the input file.
-		bool_t         _skip;     // Used to identify if a token exists within the bounds of a comment block.
-		str_t          _name;
+		typedef		char			char_t;
+
+		text_reader			_input;    // The lexical code file to parse.
+		tokens_t			_text;	   // The parsed code read from the input file.
+		bool_t				_skip;     // Used to identify if a token exists within the bounds of a comment block.
 
 	public:
 
 		parser(str_t input);
 		virtual ~parser();
 
-		void parse();
-		void parse(const str_t& input);
-		void convert_to_postfix();
-		let  compile();
-
-		str_t get_file_name() const;
-
-		void write_to_file() const;
+		let parse();
 
 	private:
 
 		parser();
 		parser(const parser& obj) = delete;
-
-		void compile(str_t& word, token_reader& code, let& exp);
 
 		int_t  is_regex_escape_char(const char& c);
 		int_t  is_string_escape_char(const char& c);
@@ -86,12 +83,18 @@ namespace Olly {
 		str_t list_op(const char& c);
 		str_t object_op(const char& c);
 		str_t expression_op(const char& c);
+		str_t closure_op(const char& c);
 		str_t scope_op(const char& c);
 
-		str_t collect_string(const str_t& stop, token_reader& code);
-		expression collect_args(const str_t& stop, token_reader& code);
-
 		void skip_comment_line();
+
+		bool_t escape_char(char_t c);
+		bool_t is_number(const str_t& word);
+
+		let  compile();
+		void compile(str_t& word, token_reader& code, let& exp);
+
+		str_t collect_string(const str_t& stop, token_reader& code);
 	};
 
 
@@ -99,24 +102,19 @@ namespace Olly {
 	//                                'parser ' method definition
 	/********************************************************************************************/
 
-	parser::parser(str_t input) : _input(input), _text(), _skip(), _name("") {
-
-		if (_input.is_file()) {
-
-			_name = set_file_ext(input, ".oly");
-		}
+	parser::parser(str_t input) : _input(input), _text(), _skip() {
 	}
 
 	parser::~parser() {
 	}
 
-	void parser::parse() {
+	let parser::parse() {
 		/*
 			Ensure that the file has content to parse.
 		*/
 
 		if (!_input.is()) {
-			return;
+			return expression();
 		}
 
 		while (_input.is()) {
@@ -147,6 +145,18 @@ namespace Olly {
 
 			c = _input.next();
 
+			if (!escape_char(c)) {
+
+				if (word == "-") {
+					_text.push_back("neg");
+					word = "";
+				}
+				
+				if (word == "+") {
+					word = "";
+				}
+			}
+
 			if (escape_char(c) && word != "") {
 				/*
 					If white space was encountered and
@@ -162,7 +172,7 @@ namespace Olly {
 			else if (c == ',') {
 				/*
 					Consider commas an operator and
-					split them from normal content.  
+					split them from normal content.
 				*/
 				if (word.size()) {
 					process_word(word);
@@ -172,26 +182,6 @@ namespace Olly {
 				if (!_skip) {
 
 					_text.push_back(",");
-				}
-
-				c = ' ';
-			}
-
-			else if (c == '.' && !is_number(word)) {
-				/*
-					A container accessor was encountered.
-					So long as we are not in a comment
-					block add it to the code.
-				*/
-
-				if (word.size()) {
-					process_word(word);
-					word = "";
-				}
-
-				if (!_skip) {
-
-					_text.push_back(".");
 				}
 
 				c = ' ';
@@ -219,7 +209,7 @@ namespace Olly {
 
 			else if (c == '\'') {
 				/*
-					A number was encountered.  
+					A number was encountered.
 				*/
 
 				if (word.size()) {
@@ -275,7 +265,7 @@ namespace Olly {
 				}
 			}
 
-			else if (c == '(' || c == ':' || c == ')' || c == ';') {
+			else if (c == '(' || c == ')') {
 				/*
 					An expression operator was encountered.
 					Process the expression, and add it to _text
@@ -292,6 +282,31 @@ namespace Olly {
 				}
 
 				c = ' ';
+			}
+
+			else if (c == ':' || c == ';') {
+			/*
+				An expression operator was encountered.
+				Process the expression, and add it to _text
+				so long as we are not in a comment block.
+			*/
+
+				if (word.size()) {
+					process_word(word);
+					word = "";
+				}
+
+				if (!_skip) {
+
+					if (_input.peek() == '=') {
+						_text.push_back(":=");
+						c = _input.next();
+					}
+					else {
+						_text.push_back(closure_op(c));
+					}
+					c = ' ';
+				}
 			}
 
 			else if (c == '[' || c == ']') {
@@ -404,162 +419,12 @@ namespace Olly {
 		}
 
 		// _text.push_back(")");
-	}
 
-	let parser::compile() {
-
-		token_reader code(_text);
-
-		if (!code.is()) {
+		if (_text.empty()) {
 			return expression();
 		}
 
-		str_t word;
-		let exp = expression();
-
-		while (code.is()) {
-
-			word = code.next();
-
-			compile(word, code, exp);
-
-			// std::cout << exp.lead().type() << std::endl;
-		}
-
-		return exp.reverse();
-	}
-
-	void parser::compile(str_t& word, token_reader& code, let& exp) {
-
-		if (word == ")" || word == "]" || word == "}") {
-			return;
-		}
-
-		if (word == "\"") {
-			exp = exp.place(string(collect_string("\"", code)));
-			return;
-		}
-
-		if (word == "\'") {
-			exp = exp.place(number(collect_string("\'", code)));
-			return;
-		}
-
-		if (word == "else") {
-			let else_statement = expression(boolean(true));
-
-			exp = exp.place(else_statement);
-			return;
-		}
-
-		if (word == "function") {
-
-			let func = expression();
-
-			word = code.next();
-
-			compile(word, code, func);
-
-			word = code.next();
-
-			compile(word, code, func);
-
-			exp = exp.place(function(second(func), first(func)));
-
-			return;
-		}
-		
-		if (word == "(") {
-
-			let e = expression();
-
-			while (code.is() && word != ")") {
-
-				word = code.next();
-
-				compile(word, code, e);
-			}
-			word = "";
-
-			exp = exp.place(e.reverse());
-
-			return;
-		}
-
-		if (word == "[") {
-
-			let l = list();
-
-			while (code.is() && word != "]") {
-
-				word = code.next();
-
-				compile(word, code, l);
-			}
-			word = "";
-
-			exp = exp.place(l.reverse());
-
-			return;
-		}
-
-		if (word != "") {
-
-			auto it = OPERATORS.find(word);
-
-			if (it != OPERATORS.end()) {
-
-				exp = exp.place(op_call(it->second));
-				return;
-			}
-
-			str_t upper_case = to_upper(word);
-
-			if (upper_case == "TRUE"  || upper_case == "FALSE" || 
-				upper_case == "1"     || upper_case == "0"     ||
-				upper_case == "UNDEF" || upper_case == "UNDEFINED") {
-
-				exp = exp.place(boolean(upper_case));
-				return;
-			}
-
-			exp = exp.place(symbol(word));
-		}
-		return;
-	}
-
-	str_t parser::get_file_name() const {
-		return _name;
-	}
-
-	void parser::write_to_file() const {
-
-		file_writer file(set_file_ext(_name, ".oll"));
-
-		if (file.is()) {
-
-			for (const str_t& t : _text) {
-
-				file.write_line(t);
-			}
-		}
-	}
-
-	void parser::parse(const str_t& input) {
-
-		parser lex(input);
-
-		lex.parse();
-
-		if (lex._text.size()) {
-
-			_text.reserve(_text.size() + lex._text.size());
-
-			for (const str_t& t : lex._text) {
-
-				_text.push_back(t);
-			}
-		}
+		return compile();
 	}
 
 	int_t parser::is_regex_escape_char(const char& c) {
@@ -601,14 +466,14 @@ namespace Olly {
 		/*
 			Check that we are not within a comment block.
 			Else ensure we have a work to handle and place
-			it on the back of the text queue.  
+			it on the back of the text queue.
 		*/
 
 		if (_skip) {
 			return;
 		}
 
-		else if (word != "") {
+		if (word != "") {
 			_text.push_back(word);
 		}
 	}
@@ -827,12 +692,24 @@ namespace Olly {
 		/*
 			Validate which expression operator is provided.
 		*/
-		if (c == '(' || c == ':') {
+		if (c == '(') {
 
 			return "(";
 		}
 
 		return ")";
+	}
+
+	str_t parser::closure_op(const char& c) {
+		/*
+			Validate which expression operator is provided.
+		*/
+		if (c == ':') {
+
+			return ":";
+		}
+
+		return ";";
 	}
 
 	str_t parser::scope_op(const char& c) {
@@ -862,53 +739,170 @@ namespace Olly {
 			}
 		}
 	}
+	bool_t parser::escape_char(char_t c) {
 
-	void parser::convert_to_postfix() {
-
-		tokens_t stack;
-		tokens_t buffer;
-
-		for (const str_t& word : _text) {
-
-			const int_t i = get_op_prec(word);
-
-			if (i) {
-
-				while (!stack.empty() && (get_op_prec(stack.back()) >= i)) {
-					buffer.push_back(stack.back());
-					stack.pop_back();
-				}
-
-				stack.push_back(word);
-			}
-
-			else if (word == "(") {
-				stack.push_back(word);
-			}
-
-			else if (word == ")") {
-
-				while (!stack.empty() && (stack.back() != "(")) {
-					buffer.push_back(stack.back());
-					stack.pop_back();
-				}
-
-				if (!stack.empty()) {
-					stack.pop_back();
-				}
-			}
-
-			else {
-				buffer.push_back(word);
-			}
+		if (c < 32) {
+			return true;
 		}
 
-		while (!stack.empty()) {
-			buffer.push_back(stack.back());
-			stack.pop_back();
+		if (::isspace(c)) {
+			return true;
 		}
 
-		_text = buffer;
+		return false;
+	}
+
+	bool_t parser::is_number(const str_t& word) {
+		return std::regex_match(word, REAL_REGEX);
+	}
+
+	let parser::compile() {
+
+		token_reader code(_text);
+
+		if (!code.is()) {
+			return expression();
+		}
+
+		str_t word;
+		let exp = expression();
+
+		while (code.is()) {
+
+			word = code.next();
+
+			compile(word, code, exp);
+		}
+
+		while (code.is()) {
+
+			word = code.next();
+
+			compile(word, code, exp);
+		}
+
+		return exp.reverse();
+	}
+
+	void parser::compile(str_t& word, token_reader& code, let& exp) {
+
+		if (word == ")" || word == ";" || word == "]" || word == "}") {
+			return;
+		}
+
+		if (word == "\"") {
+			exp = exp.place_lead(string(collect_string("\"", code)));
+			return;
+		}
+
+		if (word == "\'") {
+			exp = exp.place_lead(number(collect_string("\'", code)));
+			return;
+		}
+
+		if (word == "(") {
+
+			let e = expression();
+
+			while (code.is() && word != ")") {
+
+				word = code.next();
+
+				compile(word, code, e);
+			}
+			word = "";
+
+			exp = exp.place_lead(e.reverse());
+
+			return;
+		}
+
+		if (word == ":") {
+
+			let e = scope();
+
+			e = e.place_lead(op_call(OP_CODE::begin_scope_op));
+
+			while (code.is() && word != ";") {
+
+				word = code.next();
+
+				compile(word, code, e);
+			}
+			word = "";
+
+			e = e.place_lead(op_call(OP_CODE::end_scope_op));
+
+			exp = exp.place_lead(e.reverse());
+
+			return;
+		}
+
+		if (word == "[") {
+
+			let e = expression();
+
+			while (code.is() && word != "]") {
+
+				word = code.next();
+
+				compile(word, code, e);
+			}
+			word = "";
+
+			let l = list(e);
+
+			exp = exp.place_lead(l);
+
+			return;
+		}
+
+		if (word == "{") {
+
+			let e = expression();
+
+			while (code.is() && word != "}") {
+
+				word = code.next();
+
+				compile(word, code, e);
+			}
+			word = "";
+
+			// exp = exp.place_lead(set(e));
+
+			return;
+		}
+
+		if (word != "") {
+
+			auto it = OPERATORS.find(word);
+
+			if (it != OPERATORS.end()) {
+
+				exp = exp.place_lead(op_call(it->second));
+				return;
+			}
+
+			str_t upper_case = to_upper(word);
+
+			if (upper_case == "TRUE"  || upper_case == "FALSE"    ||
+				upper_case == "1"     || upper_case == "0"        ||
+				upper_case == "UNDEF" || upper_case == "UNDEFINED") {
+
+				exp = exp.place_lead(boolean(upper_case));
+				return;
+			}
+
+			if (upper_case == "ELSE") {
+				exp = exp.place_lead(boolean(true));
+			}
+
+			else if (upper_case != "NOTHING") {
+				exp = exp.place_lead(symbol(word));
+			}
+		}
+		return;
 	}
 
 	str_t parser::collect_string(const str_t& stop, token_reader& code) {
@@ -925,23 +919,6 @@ namespace Olly {
 		}
 
 		return text;
-	}
-
-	expression parser::collect_args(const str_t& stop, token_reader& code) {
-
-		str_t word = code.next();
-
-		let args = expression();
-
-		while (word != stop) {
-
-			if (word != "") {
-				compile(word, code, args);
-				word = code.next();
-			}
-		}
-
-		return args;
 	}
 
 } // end Olly

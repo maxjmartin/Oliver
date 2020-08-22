@@ -4,7 +4,7 @@
 //
 //			Copyright 2019 Max J. Martin
 //
-//			This file is part of Oliver.
+//		  	This file is part of Oliver.
 //			
 //			Oliver is free software : you can redistribute it and / or modify
 //			it under the terms of the GNU General Public License as published by
@@ -21,88 +21,85 @@
 //			
 /********************************************************************************************/
 
-#include "sys_types.h"
+#include "..\let.h";
 
 namespace Olly {
 
 	/********************************************************************************************/
 	//
-	//                              'file_writer' class definition
+	//                              'token_reader' class definition
 	//
-	//        The file_writer class opens a file and then is used to write text to the
-	//        file.
+	//        The token_reader class simply manages iteration over a series of text tokens.
 	//
 	/********************************************************************************************/
 
-	class file_writer {
-
-		file_t		_output;
-		stream_t    _stream;
-		mutex_t		_mutex;
-		bool_t		_locked;
+	class token_reader {
 
 	public:
 
-		file_writer(const str_t& inp);
-		virtual ~file_writer();
+		token_reader(const tokens_t& input_code);
+		virtual ~token_reader();
+
+		str_t next();
+		str_t peek();
 
 		bool_t is();
 
-		void write(const str_t& word);
-		void write_line(const str_t& word);
-
 	private:
-		file_writer();
-		file_writer(const file_writer& obj) = delete;
+
+		const tokens_t& _code;
+		tokens_t::const_iterator	_i;
+
+		token_reader();
+		token_reader(const token_reader& obj) = delete;
 	};
 
 	/********************************************************************************************/
 	//
-	//                               'file_writer' method definition
+	//                               'token_reader' method definition
 	//
 	/********************************************************************************************/
 
-	file_writer::file_writer() : _output(""), _stream(), _mutex(), _locked(false) {
+	token_reader::token_reader() : _code(tokens_t()), _i() {
 	}
 
-	file_writer::file_writer(const str_t& output_code) : _output(output_code, file_t::out), _stream(), _mutex(), _locked(_mutex.try_lock()) {
-	}
+	token_reader::token_reader(const tokens_t& input_code) : _code(input_code), _i() {
 
-	file_writer::~file_writer() {
-		_output.close();
-
-		if (_locked) {
-			_mutex.unlock();
+		if (!_code.empty()) {
+			_i = _code.cbegin();
 		}
 	}
 
+	token_reader::~token_reader() {
+	}
 
-	bool_t file_writer::is() {
+	str_t token_reader::next() {
+
+		if (is()) {
+
+			str_t t = *_i;
+
+			++_i;
+
+			return t;
+		}
+
+		return "";
+	}
+
+	str_t token_reader::peek() {
+		/*
+			Return the current value of '_c'.
+		*/
+		return *_i;
+	}
+
+	bool_t token_reader::is() {
 		/*
 			Return true if the file is not eof
 			and in good condition.
 		*/
-
-		return _output.good();
-	}
-
-
-
-	void file_writer::write(const str_t& word) {
-
-		if (_output.good()) {
-
-			_output << word;
-		}
-	}
-
-	void file_writer::write_line(const str_t& word) {
-
-		if (_output.good()) {
-
-			_output << word;
-			_output << std::endl;
-		}
+		return (_i != _code.cend());
 	}
 
 } // end Olly

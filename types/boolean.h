@@ -22,7 +22,6 @@
 /********************************************************************************************/
 
 #include "let.h"
-#include "number.h"
 
 namespace Olly {
 
@@ -53,16 +52,11 @@ namespace Olly {
 		boolean(const real_t& n, real_t t = 1.0);
 		virtual ~boolean();
 
-		friend  std::stringstream& operator >> (std::stringstream& stream, boolean& self);
-
 		friend str_t         __type__(const boolean& self);
 		friend bool_t          __is__(const boolean& self);
 		friend real_t        __comp__(const boolean& self, const let& other);
-		friend void           __str__(std::stringstream& out, const boolean& self);
-		friend void          __repr__(std::stringstream& out, const boolean& self);
-
-		friend let            __get__(const boolean& self, const let& key);
-		friend let            __set__(const boolean& self, const let& key, const let& value);
+		friend void           __str__(stream_t& out, const boolean& self);
+		friend void          __repr__(stream_t& out, const boolean& self);
 	};
 
 
@@ -130,19 +124,12 @@ namespace Olly {
 	boolean::~boolean() {
 	}
 
-	std::stringstream& operator >> (std::stringstream& stream, boolean& self) {
-
-		self = boolean(stream.str());
-
-		return stream;
-	}
-
 	std::string __type__(const boolean& self) {
 		return "boolean";
 	}
 
 	bool __is__(const boolean& self) {
-		return self._term >= self._weight ? true : false;
+		return self._term >= self._weight;
 	}
 
 	real_t __comp__(const boolean& self, const let& other) {
@@ -151,8 +138,8 @@ namespace Olly {
 
 		if (b) {
 
-			bool p = self._term >= self._weight ? true : false;
-			bool q = b->_term >= b->_weight ? true : false;
+			bool p = __is__(self);
+			bool q = __is__(b);
 
 			if (p > q) {
 				return 1.0;
@@ -168,7 +155,7 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(std::stringstream& out, const boolean& self) {
+	void __str__(stream_t& out, const boolean& self) {
 
 		if (self._term != self._term) {
 
@@ -180,39 +167,9 @@ namespace Olly {
 		out << __is__(self);
 	}
 
-	void __repr__(std::stringstream& out, const boolean& self) {
+	void __repr__(stream_t& out, const boolean& self) {
 
-		out << "('" << self._term << "' '" << self._weight << "' _bool)";
-	}
-
-	let __get__(const boolean& self, const let& key) {
-
-		str_t k = to_upper(str(key));
-
-		if (k == "TERM") {
-			return number(self._term);
-		}
-
-		if (k == "WEIGHT") {
-			return number(self._weight);
-		}
-
-		return number("nan");
-	}
-
-	let __set__(const boolean& self, const let& key, const let& value) {
-
-		str_t k = to_upper(str(key));
-
-		if (k == "TERM") {
-			return boolean(value.real(), self._weight);
-		}
-
-		if (k == "WEIGHT") {
-			return boolean(self._term, value.real());
-		}
-
-		return self;
+		out << "('" << self._term << "' '" << self._weight << "' BOOL)";
 	}
 
 } // end

@@ -22,7 +22,7 @@
 /********************************************************************************************/
 
 #include <complex>
-#include "let.h"
+#include "..\let.h"
 
 namespace Olly {
 
@@ -43,6 +43,7 @@ namespace Olly {
 	/********************************************************************************************/
 
 	class number {
+		typedef		std::complex<real_t>		num_t;
 
 	public:
 
@@ -66,16 +67,12 @@ namespace Olly {
 		friend void        __str__(stream_t& out, const number& self);
 		friend void       __repr__(stream_t& out, const number& self);
 
-		friend bool_t    __l_and__(const number& self, const let& other);
-		friend bool_t     __l_or__(const number& self, const let& other);
-		friend bool_t    __l_xor__(const number& self, const let& other);
-		friend bool_t    __l_not__(const number& self);
-
 		friend let         __add__(const number& self, const let& other);
 		friend let         __sub__(const number& self, const let& other);
 		friend let         __mul__(const number& self, const let& other);
 		friend let         __div__(const number& self, const let& other);
 		friend let         __mod__(const number& self, const let& other);
+		friend let         __neg__(const number& self);
 
 		friend let       __f_div__(const number& self, const let& other);
 		friend let         __rem__(const number& self, const let& other);
@@ -85,9 +82,10 @@ namespace Olly {
 		friend bool_t  __complex__(const number& self);
 
 		friend int_t   __integer__(const number& self);
-		friend real_t     __real__(const number& self);
 
 	private:
+		typedef		std::vector<str_t>		tokens_t;
+
 		num_t _value;
 	};
 
@@ -256,76 +254,6 @@ namespace Olly {
 		out << "\'";
 	}
 
-
-	bool_t __l_and__(const number& self, const let& other) {
-
-		const number* n = other.cast<number>();
-
-		if (n) {
-
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
-				return false;
-			}
-
-			return self._value.real() && n->_value.real();
-		}
-
-		return false;
-	}
-
-	bool_t __l_or__(const number& self, const let& other) {
-
-		const number* n = other.cast<number>();
-
-		if (n) {
-
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
-				return false;
-			}
-
-			return self._value.real() || n->_value.real();
-		}
-
-		return false;
-	}
-
-	bool_t __l_xor__(const number& self, const let& other) {
-
-		const number* n = other.cast<number>();
-
-		if (n) {
-
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
-				return false;
-			}
-
-			bool_t p = false;
-
-			if (self._value.real()) {
-				p = true;
-			}
-
-			bool_t q = false;
-
-			if (n->_value.real()) {
-				q = true;
-			}
-
-			return (bool_t)(p ^ q);
-		}
-
-		return false;
-	}
-
-	bool_t __l_not__(const number& self) {
-
-		if (__nan__(self) || __complex__(self)) {
-			return true;
-		}
-
-		return !self._value.real();
-	}
-
 	let __add__(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
@@ -333,7 +261,7 @@ namespace Olly {
 		if (n) {
 			return number(self._value + n->_value);
 		}
-		return null();
+		return nothing();
 	}
 
 	let __sub__(const number& self, const let& other) {
@@ -343,7 +271,7 @@ namespace Olly {
 		if (n) {
 			return number(self._value - n->_value);
 		}
-		return null();
+		return nothing();
 	}
 
 	let __mul__(const number& self, const let& other) {
@@ -353,7 +281,7 @@ namespace Olly {
 		if (n) {
 			return number(self._value * n->_value);
 		}
-		return null();
+		return nothing();
 	}
 
 	let __div__(const number& self, const let& other) {
@@ -363,7 +291,7 @@ namespace Olly {
 		if (n) {
 			return number(self._value / n->_value);
 		}
-		return null();
+		return nothing();
 	}
 
 	let __mod__(const number& self, const let& other) {
@@ -379,7 +307,16 @@ namespace Olly {
 			return number((unsigned long long)self._value.real() % (unsigned long long)n->_value.real());
 		}
 
-		return null();
+		return nothing();
+	}
+
+	let __neg__(const number& self) {
+
+		if (__nan__(self)) {
+			return number("nan");
+		}
+
+		return number(-self._value);
 	}
 
 	let __f_div__(const number& self, const let& other) {
@@ -395,7 +332,7 @@ namespace Olly {
 			return number(std::floor(self._value.real() / n->_value.real()));
 		}
 
-		return null();
+		return nothing();
 	}
 
 	let __rem__(const number& self, const let& other) {
@@ -413,7 +350,7 @@ namespace Olly {
 			return number(r - std::floor(r));
 		}
 
-		return null();
+		return nothing();
 	}
 
 	let __pow__(const number& self, const let& other) {
@@ -429,7 +366,7 @@ namespace Olly {
 			return number(std::pow(self._value, n->_value));
 		}
 
-		return null();
+		return nothing();
 	}
 
 	bool_t __nan__(const number& self) {
@@ -448,11 +385,6 @@ namespace Olly {
 	int_t __integer__(const number& self) {
 
 		return static_cast<int_t>(self._value.real());
-	}
-
-	real_t __real__(const number& self) {
-
-		return self._value.real();
 	}
 
 } // end

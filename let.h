@@ -1,6 +1,5 @@
 #pragma once
-
-#include "sys_types.h"
+#pragma once
 
 /********************************************************************************************/
 //
@@ -23,8 +22,68 @@
 //			
 /********************************************************************************************/
 
+#include <algorithm>
+#include <cctype>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#ifdef _MSC_VER
+#include "Windows.h"
+#endif
+
+/*  Place holder for porting over to another operating system.
+#ifdef _MSC_VER
+
+#else
+
+#endif
+
+*/
+#ifdef _MSC_VER
+	#define forceinline __forceinline
+#elif defined(__GNUC__)
+	#define forceinline inline __attribute__((__always_inline__))
+#elif defined(__CLANG__)
+	#if __has_attribute(__always_inline__)
+		#define forceinline inline __attribute__((__always_inline__))
+	#else
+		#define forceinline inline
+	#endif
+#else
+	#define forceinline inline
+#endif
+
 namespace Olly {
 
+#if _WIN32 || _WIN64
+#if _WIN64
+	using int_t = long int;
+#else
+	using int_t = int;
+#endif
+#endif
+
+#if __GNUC__
+#if __x86_64__ || __ppc64__
+	using int_t = long int;
+#else
+	using int_t = int;
+#endif
+#endif
+
+	typedef		bool						bool_t;
+	typedef		long double					real_t;
+	typedef		std::string					str_t;
+	typedef		std::stringstream			stream_t;
+	typedef     std::vector<str_t>			tokens_t;
+
+	static const real_t			NOT_A_NUMBER = std::numeric_limits<real_t>::quiet_NaN();
+	static const				std::hash<str_t> DEFAULT_HASH_FUNCTION;
+
+	static const str_t			ESCAPE_CHAR(" \t\r\n\a\f\v\b");
 
 	/********************************************************************************************/
 	//
@@ -39,8 +98,8 @@ namespace Olly {
 	//          functions described below, in order to utilize run-time polymorphism.
 	//
 	//          The 'let' class also supports both pass by reference and pass by value.
-	//          Any object it holds to be safely cast to a point_ter of the object type.  
-	//          If the type cast is made to an incorrect data type then a std::null_ptr 
+	//          Any object it holds can be safely cast to a point_ter of the object type.  
+	//          If the type cast is made to an incorrect data type then a std::nothing_ptr 
 	//          is returned instead.
 	//
 	//          The fundamental structure of the 'let' data type was inspired and extended 
@@ -50,72 +109,77 @@ namespace Olly {
 	//                 (http://sean-parent.stlab.cc/papers-and-presentations)
 	//
 	/********************************************************************************************/
-
-	class  null;
-	class  lambda_t;
-	struct environment;
+	const enum class OP_CODE;
 
 	class let {
 
 	public:
 
 		let();
-		template <typename T>          let(T x);
+		template <typename T>          let(T  x);
 		template <typename T>          let(T* x);
 
-		template <typename T> T        as()                             const;
-		template <typename T> const T* cast()                           const;
+		template <typename T> T          as()                           const;  // Define a copy of the object as the specified type.
+		template <typename T> const T* cast()                           const;  // Cast the object as an instance of the specified type.
 
-		str_t             id()                                          const;
-		bool_t       is_type(const let& other)                          const;
-		std::size_t     hash()                                          const;
+		str_t             id()                                          const;  // Return the typeid of the object.
+		bool_t       is_type(const let& other)                          const;  // Compair two objects by typeid.  
+		std::size_t     hash()                                          const;  // Get the hash of an object.
 
-		str_t           type()                                          const;
-		bool_t            is()                                          const;
-		void             str(stream_t& out)                             const;
+		str_t           type()                                          const;  // The class generated type name.
+		bool_t            is()                                          const;  // Is or is not the object defined.
+		void             str(stream_t& out)                             const;  // String representation of the object.
 		void            repr(stream_t& out)                             const;
 
-		real_t          comp(const let& other)                          const;
-		bool_t            eq(const let& other)                          const;
-		bool_t            ne(const let& other)                          const;
-		bool_t            ge(const let& other)                          const;
-		bool_t            le(const let& other)                          const;
-		bool_t            gt(const let& other)                          const;
-		bool_t            lt(const let& other)                          const;
+		real_t          comp(const let& other)                          const;  // Compare two objects. 0 = equality, > 0 = grater than, < 0 = less than.
+		bool_t            eq(const let& other)                          const;  // Equal to.
+		bool_t            ne(const let& other)                          const;  // Not equal to.
+		bool_t            ge(const let& other)                          const;  // Greater than equal to.
+		bool_t            le(const let& other)                          const;  // Less than equal to.
+		bool_t            gt(const let& other)                          const;  // Greater than.
+		bool_t            lt(const let& other)                          const;  // Less than.
 
-		bool_t         l_and(const let& other)                          const;
-		bool_t          l_or(const let& other)                          const;
-		bool_t         l_xor(const let& other)                          const;
-		bool_t         l_not()                                          const;
+		bool_t         l_and(const let& other)                          const;  // Logical and.
+		bool_t          l_or(const let& other)                          const;  // Logical or.
+		bool_t         l_xor(const let& other)                          const;  // Logical exlusive or.
+		bool_t         l_not()                                          const;  // Logical not.
 
-		let              add(const let& other)                          const;
-		let              sub(const let& other)                          const;
-		let              mul(const let& other)                          const;
-		let              div(const let& other)                          const;
-		let              mod(const let& other)                          const;
+		let              add(const let& other)                          const;  // Addition.
+		let              sub(const let& other)                          const;  // Subtraction.
+		let              mul(const let& other)                          const;  // Multiplication.
+		let              div(const let& other)                          const;  // Division.
+		let              mod(const let& other)                          const;  // Modulus.  
+		let              neg()                                          const;  // Negation.
 
-		let            f_div(const let& other)                          const;
-		let              rem(const let& other)                          const;
-		let              pow(const let& other)                          const;
+		let            f_div(const let& other)                          const;  // Floor divide.
+		let              rem(const let& other)                          const;  // Remainder.
+		let              pow(const let& other)                          const;  // Raise to the power of.
 
-		int_t            len()                                          const;
-		let             lead()                                          const;
-		let            place(const let& other)                          const;
-		let            shift()                                          const;
-		let          reverse()                                          const;
-		let              get(const let& key)                            const;
-		let              set(const let& key, const let& val)            const;
+		int_t            len()                                          const;  // Length of an object.
+		let             lead()                                          const;  // Lead element of an object.
+		let             last()                                          const;  // Last element of an object.
+		let       place_lead(const let& other)                          const;  // Place an object as the lead element.
+		let       shift_lead()                                          const;  // Remove the lead element from an object.
+		let       place_last(const let& other)                          const;  // Place an object as the last element.
+		let       shift_last()                                          const;  // Remove the last element from an object.
+		let          reverse()                                          const;  // Reverse the order of an object's elements.
 
-		bool_t    expression()                                          const;
+		let              get(const let&   key)                          const;  // Get an element from a collection.
+		let              set(const let&   key, const let& val)          const;  // Set the value of an element in a collection.
+		
 		bool_t     interable()                                          const;
-		bool_t       nothing()						                    const;
-		bool_t       op_call()                                          const;
-		bool_t        symbol()                                          const;
+		bool_t    is_nothing()						                    const;
+		bool_t        is_set()						                    const;
 		bool_t        atomic()                                          const;
 		bool_t           nan()                                          const;
 		bool_t       complex()                                          const;
 
-		str_t           help()                                          const;
+		int_t        integer()                                          const;
+		OP_CODE      op_code()                                          const;
+
+		str_t           help()                                          const;  // Define a string description of the object.
+
+		// General object operator overloads.  
 
 		bool_t    operator==(const let& other)                          const;
 		bool_t    operator!=(const let& other)                          const;
@@ -130,11 +194,6 @@ namespace Olly {
 		let        operator/(const let& other)                          const;
 		let        operator%(const let& other)                          const;
 
-		int_t        integer()                                          const;
-		real_t          real()                                          const;
-
-		lambda_t      eval(environment& env, let& exp)                  const;
-
 	private:
 
 		struct interface_t {
@@ -147,10 +206,10 @@ namespace Olly {
 			//
 			/********************************************************************************************/
 
-			virtual  ~interface_t()                                                     = default;
+			virtual  ~interface_t() = default;
 			virtual operator bool()                                               const = 0;
 
-			virtual void*         __as()                                                = 0;
+			virtual void* __as() = 0;
 			virtual str_t         __id()                                          const = 0;
 			virtual std::size_t   __hash()                                        const = 0;
 
@@ -161,16 +220,12 @@ namespace Olly {
 
 			virtual real_t        __comp(const let& other)                        const = 0;
 
-			virtual bool_t       __l_and(const let& other)                        const = 0;
-			virtual bool_t       __l_or(const let& other)                         const = 0;
-			virtual bool_t       __l_xor(const let& other)                        const = 0;
-			virtual bool_t       __l_not()                                        const = 0;
-
 			virtual let          __add(const let& other)                          const = 0;
 			virtual let          __sub(const let& other)                          const = 0;
 			virtual let          __mul(const let& other)                          const = 0;
 			virtual let          __div(const let& other)                          const = 0;
 			virtual let          __mod(const let& other)                          const = 0;
+			virtual let          __neg()                                          const = 0;
 
 			virtual let          __f_div(const let& other)                        const = 0;
 			virtual let          __rem(const let& other)                          const = 0;
@@ -178,17 +233,19 @@ namespace Olly {
 
 			virtual int_t        __len()                                          const = 0;
 			virtual let          __lead()                                         const = 0;
-			virtual let          __place(const let& other)                        const = 0;
-			virtual let          __shift()                                        const = 0;
+			virtual let          __last()                                         const = 0;
+			virtual let          __place_lead(const let& other)                   const = 0;
+			virtual let          __shift_lead()                                   const = 0;
+			virtual let          __place_last(const let& other)                   const = 0;
+			virtual let          __shift_last()                                   const = 0;
 			virtual let          __reverse()                                      const = 0;
-			virtual let          __get(const let& key)                            const = 0;
-			virtual let          __set(const let& key, const let& val)            const = 0;
 
-			virtual bool_t       __expression()                                   const = 0;
+			virtual let          __get(const let&   key)                          const = 0;
+			virtual let          __set(const let&   key, const let& val)          const = 0;
+
 			virtual bool_t       __interable()                                    const = 0;
-			virtual bool_t       __nothing()					                  const = 0;
-			virtual bool_t       __op_call()                                      const = 0;
-			virtual bool_t       __symbol()                                       const = 0;
+			virtual bool_t       __is_nothing()					                  const = 0;
+			virtual bool_t       __is_set()					                      const = 0;
 			virtual bool_t       __atomic()                                       const = 0;
 			virtual bool_t       __nan()                                          const = 0;
 			virtual bool_t       __complex()                                      const = 0;
@@ -196,9 +253,7 @@ namespace Olly {
 			virtual str_t        __help()                                         const = 0;
 
 			virtual int_t        __integer()                                      const = 0;
-			virtual real_t       __real()                                         const = 0;
-
-			virtual lambda_t     __eval(environment& env, let& exp)               const = 0;
+			virtual OP_CODE      __op_code()                                      const = 0;
 		};
 
 		template <typename T>
@@ -208,15 +263,15 @@ namespace Olly {
 			//
 			//                                  'data_t' Class Definition
 			//
-			//             The int_terface implementation of the 'interface_t' defining a
-			//             shared const point_ter of the data type passed to it.
+			//             The int_terface implementation of the 'interface_t' data type.  
+			//             Defining a shared const point_ter of the data type passed to it.
 			//
 			/******************************************************************************************/
 
 			data_t(T val);
 			operator bool()                                               const;
 
-			void* __as();
+			void*        __as();
 			str_t        __id()                                           const;
 			std::size_t  __hash()                                         const;
 
@@ -227,16 +282,12 @@ namespace Olly {
 
 			real_t       __comp(const let& other)                         const;
 
-			bool_t       __l_and(const let& other)                        const;
-			bool_t       __l_or(const let& other)                         const;
-			bool_t       __l_xor(const let& other)                        const;
-			bool_t       __l_not()                                        const;
-
 			let          __add(const let& other)                          const;
 			let          __sub(const let& other)                          const;
 			let          __mul(const let& other)                          const;
 			let          __div(const let& other)                          const;
 			let          __mod(const let& other)                          const;
+			let          __neg()                                          const;
 
 			let          __f_div(const let& other)                        const;
 			let          __rem(const let& other)                          const;
@@ -244,17 +295,19 @@ namespace Olly {
 
 			int_t        __len()                                          const;
 			let          __lead()                                         const;
-			let          __place(const let& other)                        const;
-			let          __shift()                                        const;
+			let          __last()                                         const;
+			let          __place_lead(const let& other)                   const;
+			let          __shift_lead()                                   const;
+			let          __place_last(const let& other)                   const;
+			let          __shift_last()                                   const;
 			let          __reverse()                                      const;
-			let          __get(const let& key)                            const;
-			let          __set(const let& key, const let& val)            const;
 
-			bool_t       __expression()                                   const;
+			let          __get(const let&   key)                          const;
+			let          __set(const let&   key, const let& val)          const;
+
 			bool_t       __interable()                                    const;
-			bool_t       __nothing()						              const;
-			bool_t       __op_call()                                      const;
-			bool_t       __symbol()                                       const;
+			bool_t       __is_nothing()						              const;
+			bool_t       __is_set()						                  const;
 			bool_t       __atomic()	     					              const;
 			bool_t       __nan()	     					              const;
 			bool_t       __complex()	     					          const;
@@ -262,9 +315,7 @@ namespace Olly {
 			str_t        __help()                                         const;
 
 			int_t        __integer()                                      const;
-			real_t       __real()                                         const;
-
-			lambda_t     __eval(environment& env, let& exp)               const;
+			OP_CODE      __op_code()                                      const;
 
 			T            _data;
 		};
@@ -274,7 +325,7 @@ namespace Olly {
 
 	/********************************************************************************************/
 	//
-	//                                 'null' Class Definition
+	//                                 'nothing' Class Definition
 	//
 	//          A basic class definition of the value of nothing.  This is used within
 	//          'let' class implementation to return a result of nothing for results
@@ -286,59 +337,60 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	class null {
+	class nothing {
 
 	public:
 
-		null();
-		null(const null& obj);
-		null(str_t str);
-		virtual ~null();
+		nothing();
+		nothing(const nothing& obj);
+		nothing(str_t str);
+		virtual ~nothing();
 
-		friend str_t      __type__(const null& self);
-		friend bool_t       __is__(const null& self);
-		friend real_t     __comp__(const null& self, const let& other);
-		friend void        __str__(stream_t& out, const null& self);
-		friend void       __repr__(stream_t& out, const null& self);
+		friend str_t      __type__(const nothing& self);
+		friend bool_t       __is__(const nothing& self);
+		friend real_t     __comp__(const nothing& self, const let& other);
+		friend void        __str__(stream_t& out, const nothing& self);
+		friend void       __repr__(stream_t& out, const nothing& self);
 
-		friend bool_t  __nothing__(const null& self);
+		friend bool_t  __is_nothing__(const nothing& self);
 	};
 
 
 	/********************************************************************************************/
 	//
-	//                                 'node' Class Definition
+	//                                 '__node__' Class Definition
 	//
-	//          The node class is implimented using Lisp inspired data nodes.  
-	//          At one time this had been implimented with C++ std::vectors.  
-	//          But given the imuttable nature of the interpreter this resulted 
-	//          in a signifigant slow down during run time.  
+	//          The __node__ class is implimented using Lisp inspired data nodes.  It
+	//          is used to define the data lists as in Lisp.  
 	//
 	/********************************************************************************************/
 
-	class node {
+	class __node__ {
 
 		let _data;
 		let _next;
 
 	public:
 
-		node();
-		node(const node& exp);
-		node(let obj);
-		virtual ~node();
+		__node__();
+		__node__(const __node__& exp);
+		__node__(let obj);
+		virtual ~__node__();
 
-		friend str_t           __type__(const node& self);
-		friend bool_t            __is__(const node& self);
-		friend real_t          __comp__(const node& self, const let& other);
-		friend void             __str__(stream_t& out, const node& self);
-		friend void            __repr__(stream_t& out, const node& self);
+		friend str_t           __type__(const __node__& self);
+		friend bool_t            __is__(const __node__& self);
+		friend real_t          __comp__(const __node__& self, const let& other);
+		friend void             __str__(stream_t& out, const __node__& self);
+		friend void            __repr__(stream_t& out, const __node__& self);
 
-		friend int_t            __len__(const node& self);
-		friend let             __lead__(const node& self);
-		friend let            __place__(const node& self, const let& other);
-		friend let            __shift__(const node& self);
-		friend let          __reverse__(const node& self);
+		friend int_t            __len__(const __node__& self);
+		friend let             __lead__(const __node__& self);
+		friend let             __last__(const __node__& self);
+		friend let       __place_lead__(const __node__& self, const let& other);
+		friend let       __shift_lead__(const __node__& self);
+		friend let          __reverse__(const __node__& self);
+		friend let              __get__(const __node__& self, const let& key);
+		friend let              __set__(const __node__& self, const let& key, const let& val);
 	};
 
 	/********************************************************************************************/
@@ -346,16 +398,17 @@ namespace Olly {
 	//                              'expression' Class Definition
 	//
 	//          The expression class is a Lisp linked list inspired data type.  Which
-	//          manages a list of node objects.  Strictly speaking this class is not
-	//          necessary for this project.  The node class alone will suffice to allow
-	//          all of the necessary functions and data types to be implimented on thier
-	//          own.  But this class does allow for an extra layer of abstraction.  
+	//          manages a list of __node__ objects.  Strictly speaking this class is not
+	//          necessary for this project.  The __node__ class alone would suffice to 
+	//          allow all of the necessary functions and data types to be implimented on 
+	//          thier own.  But this class does allow for an extra layer of abstraction, 
+	//          and facilitates easier code comprehension.  
 	//
 	/********************************************************************************************/
 
 	class expression {
 
-		let    _list;
+		let    _queue;
 		int_t  _len;
 
 	public:
@@ -374,179 +427,84 @@ namespace Olly {
 
 		friend int_t            __len__(const expression& self);
 		friend let             __lead__(const expression& self);
-		friend let            __place__(const expression& self, const let& other);
-		friend let            __shift__(const expression& self);
+		friend let             __last__(const expression& self);
+		friend let       __place_lead__(const expression& self, const let& other);
+		friend let       __shift_lead__(const expression& self);
 		friend let          __reverse__(const expression& self);
-
-		friend bool_t    __expression__(const expression& self);
+		friend let              __get__(const expression& self, const let& key);
+		friend let              __set__(const expression& self, const let& key, const let& val);
 	};
 
-	/********************************************************************************************/
-	//
-	//          The next section impliments a function trampoline to facilitate recursive
-	//          function calls without a seg fault.
-	//
-	//          The tail optimization code was modified from Andy Balaam's blog post.
-	//          https://www.artificialworlds.net/blog/2012/04/30/tail-call-optimisation-in-cpp/
-	//
-	/********************************************************************************************/
+	class scope {
 
-	/********************************************************************************************/
-	//
-	//                                'environement' Class Definition
-	//
-	//			The Closure class wraps around a function passed to the class to allow
-	//			it to then be wrapped in a Lambda object allowing it to be tramoplined 
-	//          when called.  
-	//
-	/********************************************************************************************/
-
-	struct environment {
-		let   constants;
-		let   variables;
-		let   stack;
-		let   exp_queue;
-		let   func_queue;
-
-		environment();
-		environment(let c, let v, let s, let e, let f);
-	};
-
-	/********************************************************************************************/
-	//
-	//                                'Closure' Class Definition
-	//
-	//			The Closure class wraps around a function passed to the class to allow
-	//			it to then be wrapped in a Lambda object allowing it to be tramoplined 
-	//          when called.  
-	//
-	/********************************************************************************************/
-
-	class lambda_t;
-
-	class closure_t {
-
-		typedef lambda_t(*function)(environment, let);
-
-		function	  _func;		// Function
-		environment	  _envr;		// Arguments
-		let     	  _args;		// Arguments
+		let    _queue;
+		int_t  _len;
 
 	public:
 
-		static const function NULL_FUNCTION;
+		scope();
+		scope(const scope& exp);
+		scope(let x);
+		virtual ~scope();
 
-		closure_t(function func, environment env, let arg);
+		friend str_t           __type__(const scope& self);
+		friend bool_t            __is__(const scope& self);
+		friend real_t          __comp__(const scope& self, const let& other);
+		friend void             __str__(stream_t& out, const scope& self);
+		friend void            __repr__(stream_t& out, const scope& self);
 
-		lambda_t operator()();
-	};
-
-	/********************************************************************************************/
-	//
-	//                                'lambda_t' Class Definition
-	//
-	//			The lambda_t class accepts a closure_t data type, and manages the closure
-	//			to identify when it has completed running and what the result of the
-	//			function closure evaluation is.  
-	//
-	/********************************************************************************************/
-
-	class lambda_t {
-
-	public:
-
-		closure_t   lambda;
-
-		lambda_t(closure_t clsr, let resl, bool_t fin);
-
-		bool_t is_not_done() const;
-		let         result() const;
-
-	private:
-		let       _result;
-		bool_t    _finished;
+		friend int_t            __len__(const scope& self);
+		friend let             __lead__(const scope& self);
+		friend let             __last__(const scope& self);
+		friend let       __place_lead__(const scope& self, const let& other);
+		friend let       __shift_lead__(const scope& self);
+		friend let          __reverse__(const scope& self);
+		friend let              __get__(const scope& self, const let& key);
+		friend let              __set__(const scope& self, const let& key, const let& val);
 	};
 
 	/********************************************************************************************/
 	//
 	//                                Basic Primitive Declarations
 	//
-	//          These definitions exist to support the 'let' methods which do not have a
-	//          specific operator overload.  Or in other cases to add a few useful support
-	//          functions.
+	//          These definitions add a few useful and some necessary support functions.
 	//
 	/********************************************************************************************/
 
-	void print();                          // Simply print a new line.
-	void print(const str_t& str);          // Accept any single string and print it with a std::endl.
-	void print(const let& a);              // Accept any single 'let' and print it with a std::endl.
+	inline void print();                          // Simply print a new line.
+	inline void print(const str_t& str);          // Accept any single string and print it with a std::endl.
+	inline void print(const let& a);              // Accept any single 'let' and print it with a std::endl.
 
-	str_t str(const  let& a);              // Convert any 'let' to a str_t.
-	str_t repr(const let& a);              // Convert any 'let' to a str_t representation of the 'let'.
+	str_t str(const  let& a);                     // Convert any 'let' to a str_t.
+	str_t repr(const let& a);                     // Convert any 'let' to a str_t representation of the 'let'.
 
-	let trampoline(lambda_t func);         // Tramploine a lambda until it returns a finished result.
+	inline bool_t expression_is_empty(let expr);  // Determine if an expression is empty.
+	inline bool_t object_is_empty(let expr);      // Determine if an object is empty.
 
-	lambda_t result(let res);              // Return the finished result of a lambda invocation.  
+	inline let pop_lead(let& expr);               // Return the lead element of an object and shift it.
+	inline let pop_last(let& expr);               // Return the last element of an object and shift it.
 
-	bool_t expression_is_empty(let expr);  // Determine if an expression is empty.
+	inline let  first(let p);                     // Return the first element of an object.
+	inline let second(let p);                     // Return the second element of an object.
+	inline let  third(let p);                     // Return the third element of an object.
 
-	let pop_lead(let& expr);               // Return the lead element of an expression and shift it.
+	inline str_t to_lower(str_t str);             // Set all text in a str_t to lower case.
+	inline str_t to_upper(str_t str);             // Set all text in a str_t to upper case.
 
-	let  first(let p);                     // Return the first element of an expression.
-	let second(let p);                     // Return the second element of an expression.
+	inline void ltrim(str_t& s);                  // Mutable remove left white space.
+	inline void rtrim(str_t& s);                  // Mutable remove right white space.
+	inline void lrtrim(str_t& s);                 // Mutable remove left and right white space.
 
-	/********************************************************************************************/
-	//
-	//                              'environment' Class Implimentation
-	//
-	/********************************************************************************************/
+	inline str_t left_trim(str_t s);              // Copy and remove left white space.
+	inline str_t right_trim(str_t s);             // Copy and remove right white space.
+	inline str_t trim(str_t s);                   // Copy and remove left and right white space.
 
-	environment::environment() : 
-		constants(expression()), 
-		variables(expression()), 
-		stack(expression()), 
-		exp_queue(expression()),
-		func_queue(expression()) {
-	}
+	static tokens_t split(str_t str, char delim);
+	static tokens_t split(const str_t& str, str_t delim);
 
-	environment::environment(let c, let v, let s, let e, let f) : 
-		constants(c), 
-		variables(v), 
-		stack(s), 
-		exp_queue(e),
-		func_queue(f) {
-	}
+	template<typename T> T to(std::string str);
 
-	/********************************************************************************************/
-	//
-	//                                'lambda_t' Class Implimentation
-	//
-	/********************************************************************************************/
-
-	lambda_t::lambda_t(closure_t clsr, let resl, bool_t fin) : lambda(clsr), _result(resl), _finished((!fin)) {
-	}
-
-	bool_t lambda_t::is_not_done() const {
-		return _finished;
-	}
-
-	let lambda_t::result() const {
-		return _result;
-	}
-
-	/********************************************************************************************/
-	//
-	//                                'closure_t' Class Implimentation
-	//
-	/********************************************************************************************/
-
-	closure_t::closure_t(function func, environment env, let arg) : _func(func), _envr(env), _args(arg) {
-	}
-
-	lambda_t closure_t::operator()() {
-		return _func(_envr, _args);
-	}
-
+	
 	/********************************************************************************************/
 	//
 	//                      'let' Class Function Default Template API.
@@ -555,7 +513,7 @@ namespace Olly {
 	//           may be used to tailor the behavior of any object held within a 'let'.
 	//
 	//           Each function defined here defines the default behavior of each function
-	//           which is not overwritten.
+	//           which is invoked if a function is not overwritten for a defined class.
 	//
 	/********************************************************************************************/
 
@@ -601,7 +559,7 @@ namespace Olly {
 
 	template<typename T>
 	void __repr__(stream_t& out, const T& self) {
-		out << str(null());
+		out << str(nothing());
 	}
 
 
@@ -614,49 +572,12 @@ namespace Olly {
 	}
 
 
-	template<typename T>            /****  Logical And  ****/
-	bool_t __l_and__(const T& self, const let& other);
-
-	template<typename T>
-	bool_t __l_and__(const T& self, const let& other) {
-		return false;
-	}
-
-
-	template<typename T>            /****  Logical Or  ****/
-	bool_t __l_or__(const T& self, const let& other);
-
-	template<typename T>
-	bool_t __l_or__(const T& self, const let& other) {
-		return false;
-	}
-
-
-	template<typename T>            /****  Logical Exclusive Or  ****/
-	bool_t __l_xor__(const T& self, const let& other);
-
-	template<typename T>
-	bool_t __l_xor__(const T& self, const let& other) {
-		return false;
-	}
-
-
-	template<typename T>            /****  Logical Negation  ****/
-	bool_t __l_not__(const T& self);
-
-	template<typename T>
-	bool_t __l_not__(const T& self) {
-		return true;
-	}
-
-
-
 	template<typename T>            /****  Addition or Concatenation  ****/
 	let __add__(const T& self, const let& other);
 
 	template<typename T>
 	let __add__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -665,7 +586,7 @@ namespace Olly {
 
 	template<typename T>
 	let __sub__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -674,7 +595,7 @@ namespace Olly {
 
 	template<typename T>
 	let __mul__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -683,7 +604,7 @@ namespace Olly {
 
 	template<typename T>
 	let __div__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 	template<typename T>            /****  Modulation  ****/
@@ -691,7 +612,16 @@ namespace Olly {
 
 	template<typename T>
 	let __mod__(const T& self, const let& other) {
-		return null();
+		return nothing();
+	}
+
+
+	template<typename T>            /****  Negation  ****/
+	let __neg__(const T& self);
+
+	template<typename T>
+	let __neg__(const T& self) {
+		return nothing();
 	}
 
 
@@ -700,7 +630,7 @@ namespace Olly {
 
 	template<typename T>
 	let __f_div__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -709,7 +639,7 @@ namespace Olly {
 
 	template<typename T>
 	let __rem__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -718,7 +648,7 @@ namespace Olly {
 
 	template<typename T>
 	let __pow__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -736,25 +666,52 @@ namespace Olly {
 
 	template<typename T>
 	let __lead__(const T& self) {
-		return null();
+		return nothing();
+	}
+
+
+	template<typename T>            /****  Last Element Of  ****/
+	let __last__(const T& self);
+
+	template<typename T>
+	let __last__(const T& self) {
+		return nothing();
 	}
 
 
 	template<typename T>            /**** Perpend Lead Element Of  ****/
-	let __place__(const T& self, const let& other);
+	let __place_lead__(const T& self, const let& other);
 
 	template<typename T>
-	let __place__(const T& self, const let& other) {
-		return null();
+	let __place_lead__(const T& self, const let& other) {
+		return nothing();
 	}
 
 
 	template<typename T>            /****  Left Shift Remove  ****/
-	let __shift__(const T& self);
+	let __shift_lead__(const T& self);
 
 	template<typename T>
-	let __shift__(const T& self) {
-		return null();
+	let __shift_lead__(const T& self) {
+		return nothing();
+	}
+
+
+	template<typename T>            /**** Postpend Last Element Of  ****/
+	let __place_last__(const T& self, const let& other);
+
+	template<typename T>
+	let __place_last__(const T& self, const let& other) {
+		return nothing();
+	}
+
+
+	template<typename T>            /****  Right Shift Remove  ****/
+	let __shift_last__(const T& self);
+
+	template<typename T>
+	let __shift_last__(const T& self) {
+		return nothing();
 	}
 
 
@@ -763,7 +720,7 @@ namespace Olly {
 
 	template<typename T>
 	let __reverse__(const T& self) {
-		return null();
+		return nothing();
 	}
 
 
@@ -772,7 +729,7 @@ namespace Olly {
 
 	template<typename T>
 	let __get__(const T& self, const let& other) {
-		return null();
+		return nothing();
 	}
 
 
@@ -781,17 +738,9 @@ namespace Olly {
 
 	template<typename T>
 	let __set__(const T& self, const let& other, const let& val) {
-		return null();
+		return nothing();
 	}
 
-
-	template<typename T>            /****  Is A interable  ****/
-	bool_t __expression__(const T& self);
-
-	template<typename T>
-	bool_t __expression__(const T& self) {
-		return false;
-	}
 
 
 	template<typename T>            /****  Is A interable  ****/
@@ -803,29 +752,20 @@ namespace Olly {
 	}
 
 
-	template<typename T>            /****  Is None Type  ****/
-	bool_t __nothing__(const T& self);
+	template<typename T>            /****  Is Nothing Type  ****/
+	bool_t __is_nothing__(const T& self);
 
 	template<typename T>
-	bool_t __nothing__(const T& self) {
+	bool_t __is_nothing__(const T& self) {
 		return false;
 	}
 
 
-	template<typename T>            /****  Is OP Call Type  ****/
-	bool_t __op_call__(const T& self);
+	template<typename T>            /****  Is Set Type  ****/
+	bool_t __is_set__(const T& self);
 
 	template<typename T>
-	bool_t __op_call__(const T& self) {
-		return false;
-	}
-
-
-	template<typename T>            /****  Is Symbolic Type  ****/
-	bool_t __symbol__(const T& self);
-
-	template<typename T>
-	bool_t __symbol__(const T& self) {
+	bool_t __is_set__(const T& self) {
 		return false;
 	}
 
@@ -875,117 +815,91 @@ namespace Olly {
 	}
 
 
-	template<typename T>            /****  Return An Real Number Representation ****/
-	real_t __real__(const T& self);
+	template<typename T>            /****  Return An Operation Code ****/
+	OP_CODE __op_code__(const T& self);
 
 	template<typename T>
-	real_t __real__(const T& self) {
-		return NOT_A_NUMBER;
+	OP_CODE __op_code__(const T& self) {
+		return OP_CODE();
 	}
 
-
-	template<typename T>            /****  Invoke An Evaluation Call ****/
-	lambda_t __eval__(const T& self, environment& env, let& exp);
-
-	template<typename T>
-	lambda_t __eval__(const T& self, environment& env, let& exp) {
-		return result(self);
-	}
 
 	/********************************************************************************************/
 	//
-	//                                 'null' Class Implimentation
+	//                                 'nothing' Class Implimentation
 	//
 	/********************************************************************************************/
 
-	null::null() {
+	nothing::nothing() {
 	}
 
-	null::null(const null& obj) {
+	nothing::nothing(const nothing& obj) {
 	}
 
-	null::null(str_t str) {
+	nothing::nothing(str_t str) {
 	}
 
-	null::~null() {
+	nothing::~nothing() {
 	}
 
-	/*
-	stream_t& operator >> (stream_t& stream, null& self) {
-
-		// TODO: Does this even need to be there?
-		self = null();
-
-		return stream;
-	}
-	*/
-
-	str_t __type__(const null& self) {
-		return "null";
+	str_t __type__(const nothing& self) {
+		return "nothing";
 	}
 
-	bool_t __is__(const null& self) {
+	bool_t __is__(const nothing& self) {
 		return false;
 	}
 
-	real_t __comp__(const null& self, const let& other) {
+	real_t __comp__(const nothing& self, const let& other) {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const null& self) {
-		out << "null";
+	void __str__(stream_t& out, const nothing& self) {
+		out << "nothing";
 	}
 
-	void __repr__(stream_t& out, const null& self) {
+	void __repr__(stream_t& out, const nothing& self) {
 		__str__(out, self);
 	}
 
-	bool_t __nothing__(const null& self) {
+	bool_t __is_nothing__(const nothing& self) {
 		return true;
 	}
 
 	/********************************************************************************************/
 	//
-	//                                 'node' Class Implimentation
+	//                                 '__node__' Class Implimentation
 	//
 	/********************************************************************************************/
 
-	node::node() : _data(), _next() {
+	__node__::__node__() : _data(), _next() {
 	}
 
-	node::node(const node& exp) : _data(exp._data), _next(exp._next) {
+	__node__::__node__(const __node__& exp) : _data(exp._data), _next(exp._next) {
 	}
 
-	node::node(let object) : _data(object), _next() {
+	__node__::__node__(let object) : _data(object), _next() {
 	}
 
-	node::~node() {
+	__node__::~__node__() {
 	}
 
-	std::string __type__(const node& self) {
-		return "node";
+	std::string __type__(const __node__& self) {
+		return "__node__";
 	}
 
-	bool_t __is__(const node& self) {
+	bool_t __is__(const __node__& self) {
 
-		if (self._data.nothing()) {
+		if (self._data.is_nothing()) {
 			return false;
 		}
 
 		return true;
 	}
 
-	real_t __comp__(const node& self, const let& other) {
-		/*
-			This can probably be removed.  Because an node
-			always evaluates to the stack, there would never be
-			a change to actually perform the comparison
-			between two nodes.
+	real_t __comp__(const __node__& self, const let& other) {
 
-			However this may be useful under other circumstances.
-		*/
-
-		const node* p = other.cast<node>();
+		const __node__* p = other.cast<__node__>();
 
 		if (p) {
 
@@ -998,8 +912,8 @@ namespace Olly {
 					return NOT_A_NUMBER;
 				}
 
-				a = a.shift();
-				b = b.shift();
+				a = a.shift_lead();
+				b = b.shift_lead();
 			}
 
 			if (!a.is() && !b.is()) {
@@ -1010,7 +924,7 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const node& self) {
+	void __str__(stream_t& out, const __node__& self) {
 
 		if (!__is__(self)) {
 			return;
@@ -1023,18 +937,18 @@ namespace Olly {
 		do {
 			out << str(e.lead());
 
-			e = e.shift();
+			e = e.shift_lead();
 
 			next = e.is();
 
 			if (next) {
-				out << ", ";
+				out << " ";
 			}
 
 		} while (next);
 	}
 
-	void __repr__(stream_t& out, const node& self) {
+	void __repr__(stream_t& out, const __node__& self) {
 
 		if (!__is__(self)) {
 			return;
@@ -1047,18 +961,18 @@ namespace Olly {
 		do {
 			out << repr(e.lead());
 
-			e = e.shift();
+			e = e.shift_lead();
 
 			next = e.is();
 
 			if (next) {
-				out << ", ";
+				out << " ";
 			}
 
 		} while (next);
 	}
 
-	int_t __len__(const node& self) {
+	int_t __len__(const __node__& self) {
 
 		if (!__is__(self)) {
 			return 0;
@@ -1072,24 +986,41 @@ namespace Olly {
 
 			size += 1;
 
-			next = next.shift();
+			next = next.shift_lead();
 		}
 
 		return size;
 	}
 
-	let __lead__(const node& self) {
+	let __lead__(const __node__& self) {
 
 		return self._data;
 	}
 
-	let __place__(const node& self, const let& other) {
+	let __last__(const __node__& self) {
 
-		if (other.nothing()) {
+		if (self._next.is_nothing()) {
+
 			return self;
 		}
 
-		node a(other);
+		let next = self;
+
+		while (next.shift_lead().is()) {
+
+			next = next.shift_lead();
+		}
+
+		return next;
+	}
+
+	let __place_lead__(const __node__& self, const let& other) {
+
+		if (other.is_nothing()) {
+			return self;
+		}
+
+		__node__ a(other);
 
 		if (__is__(self)) {
 
@@ -1099,35 +1030,80 @@ namespace Olly {
 		return a;
 	}
 
-	let __shift__(const node& self) {
+	let __shift_lead__(const __node__& self) {
 
-		if (self._next.nothing()) {
+		if (self._next.is_nothing()) {
 
-			return node();
+			return __node__();
 		}
 
 		return self._next;
 	}
 
-	let __reverse__(const node& self) {
+	let __reverse__(const __node__& self) {
 
 		if (__atomic__(self)) {
 
 			return self;
 		}
 
-		let a = node();
+		let a = __node__();
 
 		let next = self;
 
 		while (next.is()) {
 
-			a = a.place(next.lead());
+			a = a.place_lead(next.lead());
 
-			next = next.shift();
+			next = next.shift_lead();
 		}
 
 		return a;
+	}
+
+	let __get__(const __node__& self, const let& key) {
+				
+		let next = self;
+
+		while (next.is()) {
+
+			if (key == first(next.lead())) {
+				return second(next.lead());
+			}
+
+			next = next.shift_lead();
+		}
+
+		return nothing();
+	}
+
+	let __set__(const __node__& self, const let& key, const let& val) {
+
+		let next = self;
+
+		let new_pair = __node__();
+
+		bool_t is_set = false;
+
+		while (next.is()) {
+
+			if (key < first(next.lead()) && not is_set) {
+
+				let old_pair = next.lead();
+				// let new_pair = __expression__<'(', ')'>();
+
+				new_pair = new_pair.place_lead(old_pair.lead());
+				new_pair = new_pair.place_last(val);
+
+				is_set = true;
+			}
+
+			new_pair = new_pair.place_lead(next.lead());
+
+			next = next.shift_lead();
+		}
+
+		return next.reverse();
 	}
 
 	/********************************************************************************************/
@@ -1136,24 +1112,31 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	expression::expression() : _list(node()), _len(0) {
+	expression::expression() : _queue(__node__()), _len(0) {
 	}
 
-	expression::expression(const expression& exp) : _list(exp._list), _len(exp._len) {
+	expression::expression(const expression& exp) : _queue(exp._queue), _len(exp._len) {
 	}
 
-	expression::expression(let x) : _list(node(x)), _len(0) {
-		if (_list.is()) {
+	expression::expression(let x) : _queue(__node__(x)), _len(0) {
+		if (_queue.is()) {
 			_len = 1;
 		}
 	}
 
-	expression::expression(let x, let y) : _list(node()), _len(0) {
+	expression::expression(let x, let y) : _queue(__node__()), _len(0) {
 
-		_list = _list.place(y);
-		_list = _list.place(x);
+		_queue = _queue.place_lead(y);
 
-		_len = _list.len();
+		if (_queue.len() > _len) {
+			_len += 1;
+		}
+
+		_queue = _queue.place_lead(x);
+
+		if (_queue.len() > _len) {
+			_len += 1;
+		}
 	}
 
 	expression::~expression() {
@@ -1173,21 +1156,13 @@ namespace Olly {
 	}
 
 	real_t __comp__(const expression& self, const let& other) {
-		/*
-			This can probably be removed.  Because an expression
-			always evaluates to the stack, there would never be
-			a change to actually perform the comparison
-			between two expressions.
 
-			However this may be useful under other circumstances.
-		*/
-
-		const expression* e = other.cast<expression>();
+		const expression* e = other.cast<expression >();
 
 		if (e) {
 
 			if (self._len == e->_len) {
-				return (self._list == e->_list);
+				return (self._queue == e->_queue);
 			}
 		}
 
@@ -1203,7 +1178,7 @@ namespace Olly {
 
 		out << "(";
 
-		out << str(self._list);
+		self._queue.str(out);
 
 		out << ")";
 	}
@@ -1217,7 +1192,7 @@ namespace Olly {
 
 		out << "(";
 
-		out << repr(self._list);
+		self._queue.repr(out);
 
 		out << ")";
 	}
@@ -1229,32 +1204,37 @@ namespace Olly {
 
 	let __lead__(const expression& self) {
 
-		return self._list.lead();
+		return self._queue.lead();
 	}
 
-	let __place__(const expression& self, const let& other) {
+	let __last__(const expression& self) {
 
-		if (other.nothing()) {
+		return self._queue.last();
+	}
+
+	let __place_lead__(const expression& self, const let& other) {
+
+		if (other.is_nothing()) {
 			return self;
 		}
 
 		expression e = self;
 
-		e._list = e._list.place(other);
+		e._queue = e._queue.place_lead(other);
 		e._len += 1;
 
 		return e;
 	}
 
-	let __shift__(const expression& self) {
+	let __shift_lead__(const expression& self) {
 
 		if (self._len == 0) {
-			return null();
+			return nothing();
 		}
 
 		expression e = self;
 
-		e._list = e._list.shift();
+		e._queue = e._queue.shift_lead();
 		e._len -= 1;
 
 		return e;
@@ -1268,13 +1248,157 @@ namespace Olly {
 
 		expression e = self;
 
-		e._list = e._list.reverse();
+		e._queue = e._queue.reverse();
 
 		return e;
 	}
 
-	bool_t __expression__(const expression& self) {
-		return true;
+	let __get__(const expression& self, const let& key) {
+
+		return self._queue.get(key);
+	}
+
+	let __set__(const expression& self, const let& key, const let& val) {
+
+		let new_queue = expression(self._queue.set(key, val));
+
+		return new_queue;
+	}
+
+	/********************************************************************************************/
+	//
+	//                               'scope' Class Implimentation
+	//
+	/********************************************************************************************/
+
+	scope::scope() : _queue(__node__()), _len(0) {
+	}
+
+	scope::scope(const scope& exp) : _queue(exp._queue), _len(exp._len) {
+	}
+
+	scope::scope(let x) : _queue(__node__(x)), _len(0) {
+		if (_queue.is()) {
+			_len = 1;
+		}
+	}
+
+	scope::~scope() {
+	}
+
+	std::string __type__(const scope& self) {
+		return "expression";
+	}
+
+	bool_t __is__(const scope& self) {
+
+		if (self._len) {
+			return true;
+		}
+
+		return false;
+	}
+
+	real_t __comp__(const scope& self, const let& other) {
+
+		const scope* e = other.cast<scope >();
+
+		if (e) {
+
+			if (self._len == e->_len) {
+				return (self._queue == e->_queue);
+			}
+		}
+
+		return NOT_A_NUMBER;
+	}
+
+	void __str__(stream_t& out, const scope& self) {
+
+		if (self._len <= 2) {
+			out << ":;";
+			return;
+		}
+
+		self._queue.str(out);
+	}
+
+	void __repr__(stream_t& out, const scope& self) {
+
+		if (self._len <= 2) {
+			out << ":;";
+			return;
+		}
+
+		self._queue.repr(out);
+	}
+
+	int_t __len__(const scope& self) {
+
+		return self._len;
+	}
+
+	let __lead__(const scope& self) {
+
+		return self._queue.lead();
+	}
+
+	let __last__(const scope& self) {
+
+		return self._queue.last();
+	}
+
+	let __place_lead__(const scope& self, const let& other) {
+
+		if (other.is_nothing()) {
+			return self;
+		}
+
+		scope e = self;
+
+		e._queue = e._queue.place_lead(other);
+		e._len += 1;
+
+		return e;
+	}
+
+	let __shift_lead__(const scope& self) {
+
+		if (self._len == 0) {
+			return nothing();
+		}
+
+		scope e = self;
+
+		e._queue = e._queue.shift_lead();
+		e._len -= 1;
+
+		return e;
+	}
+
+	let __reverse__(const scope& self) {
+
+		if (self._len < 2) {
+			return self;
+		}
+
+		scope e = self;
+
+		e._queue = e._queue.reverse();
+
+		return e;
+	}
+
+	let __get__(const scope& self, const let& key) {
+
+		return self._queue.get(key);
+	}
+
+	let __set__(const scope& self, const let& key, const let& val) {
+
+		let new_queue = scope(self._queue.set(key, val));
+
+		return new_queue;
 	}
 
 	/********************************************************************************************/
@@ -1283,7 +1407,7 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	let::let() : _self(std::make_shared<data_t<null>>(null())) {
+	let::let() : _self(std::make_shared<data_t<Olly::nothing>>(Olly::nothing())) {
 	}
 
 	template <typename T>
@@ -1373,20 +1497,21 @@ namespace Olly {
 		return (comp(other) < 0 ? true : false);
 	}
 
+
 	bool_t let::l_and(const let& other) const {
-		return _self->__l_and(other);
+		return _self->__is() && other.is();
 	}
 
 	bool_t let::l_or(const let& other) const {
-		return _self->__l_or(other);
+		return _self->__is() || other.is();
 	}
 
 	bool_t let::l_xor(const let& other) const {
-		return _self->__l_xor(other);
+		return _self->__is() != other.is();
 	}
 
 	bool_t let::l_not() const {
-		return _self->__l_not();
+		return !_self->__is();
 	}
 
 	let let::add(const let& other) const {
@@ -1409,6 +1534,10 @@ namespace Olly {
 		return _self->__mod(other);
 	}
 
+	let let::neg() const {
+		return _self->__neg();
+	}
+
 	let let::f_div(const let& other) const {
 		return _self->__f_div(other);
 	}
@@ -1429,12 +1558,24 @@ namespace Olly {
 		return _self->__lead();
 	}
 
-	let let::place(const let& other) const {
-		return _self->__place(other);
+	let let::last() const {
+		return _self->__last();
 	}
 
-	let let::shift() const {
-		return _self->__shift();
+	let let::place_lead(const let& other) const {
+		return _self->__place_lead(other);
+	}
+
+	let let::shift_lead() const {
+		return _self->__shift_lead();
+	}
+
+	let let::place_last(const let& other) const {
+		return _self->__place_last(other);
+	}
+
+	let let::shift_last() const {
+		return _self->__shift_last();
 	}
 
 	let let::reverse() const {
@@ -1449,24 +1590,16 @@ namespace Olly {
 		return _self->__set(other, val);
 	}
 
-	bool_t let::expression() const {
-		return _self->__expression();
-	}
-
 	bool_t let::interable() const {
 		return _self->__interable();
 	}
 
-	bool_t let::nothing() const {
-		return _self->__nothing();
+	bool_t let::is_nothing() const {
+		return _self->__is_nothing();
 	}
 
-	bool_t let::op_call() const {
-		return _self->__op_call();
-	}
-
-	bool_t let::symbol() const {
-		return _self->__symbol();
+	bool_t let::is_set() const {
+		return _self->__is_set();
 	}
 
 	bool_t let::atomic() const {
@@ -1480,6 +1613,15 @@ namespace Olly {
 	bool_t let::complex() const {
 		return _self->__complex();
 	}
+
+	int_t let::integer() const {
+		return _self->__integer();
+	}
+
+	OP_CODE let::op_code() const {
+		return _self->__op_code();
+	}
+
 
 	str_t let::help() const {
 		return _self->__help();
@@ -1527,18 +1669,6 @@ namespace Olly {
 
 	let let::operator%(const let& other) const {
 		return mod(other);
-	}
-
-	int_t let::integer() const {
-		return _self->__integer();
-	}
-
-	real_t let::real() const {
-		return _self->__real();
-	}
-
-	lambda_t let::eval(environment& env, let& exp) const {
-		return _self->__eval(env, exp);
 	}
 
 	/********************************************************************************************/
@@ -1597,26 +1727,6 @@ namespace Olly {
 	}
 
 	template <typename T>
-	bool_t let::data_t<T>::__l_and(const let& other) const {
-		return __l_and__(_data, other);
-	}
-
-	template <typename T>
-	bool_t let::data_t<T>::__l_or(const let& other) const {
-		return __l_or__(_data, other);
-	}
-
-	template <typename T>
-	bool_t let::data_t<T>::__l_xor(const let& other) const {
-		return __l_xor__(_data, other);
-	}
-
-	template <typename T>
-	bool_t let::data_t<T>::__l_not() const {
-		return __l_not__(_data);
-	}
-
-	template <typename T>
 	let let::data_t<T>::__add(const let& other) const {
 		return __add__(_data, other);
 	}
@@ -1639,6 +1749,11 @@ namespace Olly {
 	template <typename T>
 	let let::data_t<T>::__mod(const let& other) const {
 		return __mod__(_data, other);
+	}
+
+	template <typename T>
+	let let::data_t<T>::__neg() const {
+		return __neg__(_data);
 	}
 
 	template <typename T>
@@ -1667,13 +1782,28 @@ namespace Olly {
 	}
 
 	template <typename T>
-	let let::data_t<T>::__place(const let& other) const {
-		return __place__(_data, other);
+	let let::data_t<T>::__last() const {
+		return __last__(_data);
 	}
 
 	template <typename T>
-	let let::data_t<T>::__shift() const {
-		return __shift__(_data);
+	let let::data_t<T>::__place_lead(const let& other) const {
+		return __place_lead__(_data, other);
+	}
+
+	template <typename T>
+	let let::data_t<T>::__shift_lead() const {
+		return __shift_lead__(_data);
+	}
+
+	template <typename T>
+	let let::data_t<T>::__place_last(const let& other) const {
+		return __place_last__(_data, other);
+	}
+
+	template <typename T>
+	let let::data_t<T>::__shift_last() const {
+		return __shift_last__(_data);
 	}
 
 	template <typename T>
@@ -1692,28 +1822,18 @@ namespace Olly {
 	}
 
 	template <typename T>
-	bool_t let::data_t<T>::__expression() const {
-		return __expression__(_data);
-	}
-
-	template <typename T>
 	bool_t let::data_t<T>::__interable() const {
 		return __interable__(_data);
 	}
 
 	template <typename T>
-	bool_t let::data_t<T>::__nothing() const {
-		return __nothing__(_data);
+	bool_t let::data_t<T>::__is_nothing() const {
+		return __is_nothing__(_data);
 	}
 
 	template <typename T>
-	bool_t let::data_t<T>::__op_call() const {
-		return __op_call__(_data);
-	}
-
-	template <typename T>
-	bool_t let::data_t<T>::__symbol() const {
-		return __symbol__(_data);
+	bool_t let::data_t<T>::__is_set() const {
+		return __is_set__(_data);
 	}
 
 	template <typename T>
@@ -1742,14 +1862,10 @@ namespace Olly {
 	}
 
 	template <typename T>
-	real_t let::data_t<T>::__real() const {
-		return __real__(_data);
+	OP_CODE let::data_t<T>::__op_code() const {
+		return __op_code__(_data);
 	}
 
-	template <typename T>
-	lambda_t let::data_t<T>::__eval(environment& env, let& exp) const {
-		return __eval__(_data, env, exp);
-	}
 
 	/********************************************************************************************/
 	//
@@ -1808,53 +1924,165 @@ namespace Olly {
 		return stream.str();
 	}
 
-	const environment NULL_ENVIRONMENT = environment();
-	const closure_t::function closure_t::NULL_FUNCTION = nullptr;
-	const closure_t NULL_CLOSURE(closure_t::NULL_FUNCTION, NULL_ENVIRONMENT, null());
-
-	let trampoline(lambda_t func) {
-		/*
-			Trampoline the lambda function calls to
-			allow tail function call optimization.
-			Once the function call is done processing
-			return the range of the fuction's result.
-		*/
-		while (func.is_not_done()) {
-			func = func.lambda();
-		}
-		return func.result();
-	}
-
-	lambda_t result(let res) {
-		/*
-			Package the stack in a null lambda call,
-			which has finished running.
-		*/
-		return lambda_t(NULL_CLOSURE, res, true);
-	}
-
-	bool_t expression_is_empty(let expr) {
+	inline bool_t expression_is_empty(let expr) {
 		/*
 			Return true if the expresion is empty.
 		*/
 		return !expr.is();
 	}
 
-	let pop_lead(let& expr) {
+	inline bool_t object_is_empty(let expr) {
+		/*
+			Return true if the expresion is empty.
+		*/
+		return !expr.is();
+	}
+
+	inline let pop_lead(let& expr) {
 
 		let a = expr.lead();
 
-		expr = expr.shift();
+		expr = expr.shift_lead();
 
 		return a;
 	}
 
-	let first(let p) {
+	inline let pop_last(let& expr) {
+
+		let a = expr.last();
+
+		expr = expr.shift_last();
+
+		return a;
+	}
+
+	inline let first(let p) {
 		return p.lead();
 	}
 
-	let second(let p) {
-		return p.shift().lead();
+	inline let second(let p) {
+		return p.shift_lead().lead();
 	}
 
-} // end namespace
+	inline let third(let p) {
+		return p.shift_lead().shift_lead().lead();
+	}
+
+	inline str_t to_lower(str_t str) {
+
+		std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+
+		return str;
+	}
+
+	inline str_t to_upper(str_t str) {
+
+		std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+
+		return str;
+	}
+
+	inline void ltrim(str_t& s) {
+		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
+			return !std::isspace(ch);
+			}));
+	}
+
+	inline void rtrim(str_t& s) {
+		s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+			return !std::isspace(ch);
+			}).base(), s.end());
+	}
+
+	inline void lrtrim(str_t& s) {
+		ltrim(s);
+		rtrim(s);
+	}
+
+	inline str_t left_trim(str_t s) {
+		ltrim(s);
+		return s;
+	}
+
+	inline str_t right_trim(str_t s) {
+		rtrim(s);
+		return s;
+	}
+
+	inline str_t trim(str_t s) {
+		lrtrim(s);
+		return s;
+	}
+
+	tokens_t split(str_t str, char delim) {
+
+		std::stringstream stream;
+		stream.str(str);
+
+		tokens_t tokens;
+
+		while (std::getline(stream, str, delim)) {
+
+			tokens.push_back(str);
+		}
+
+		return tokens;
+	}
+
+	tokens_t split(const str_t& str, str_t delim) {
+
+		if (delim == "") {
+			return split(str, ESCAPE_CHAR);
+		}
+
+		tokens_t tokens, buffer, temp;
+
+		char d;
+
+		d = delim.back();
+		delim.pop_back();
+
+		tokens = split(str, d);
+
+		while (delim.size()) {
+
+			d = delim.back();
+			delim.pop_back();
+
+			buffer = tokens;
+			tokens.clear();
+
+			for (int_t i = 0, stop = buffer.size(); i < stop; i += 1) {
+
+				temp = split(buffer.at(i), d);
+
+				for (int_t j = 0, stop = temp.size(); j < stop; j += 1) {
+
+					tokens.push_back(temp.at(j));
+				}
+
+				temp.clear();
+			}
+		}
+
+		return tokens;
+	}
+
+	template<typename T> T to(std::string str) {
+
+		T n;
+
+		std::stringstream stream;
+
+		try {
+			stream << trim(str);
+			stream >> n;
+		}
+		catch (...) {
+			n = T();
+		}
+
+		return n;
+	}
+
+} // end Olly

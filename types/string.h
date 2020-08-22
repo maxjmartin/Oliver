@@ -147,7 +147,7 @@ namespace Olly {
 			return r;
 		}
 
-		return null();
+		return nothing();
 	}
 
 	let __shift__(const string& self) {

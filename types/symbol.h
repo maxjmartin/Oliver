@@ -21,7 +21,9 @@
 //			
 /********************************************************************************************/
 
-#include "let.h"
+#include <map>
+#include "..\let.h"
+#include ".\support\op_codes.h"
 
 namespace Olly {
 
@@ -37,14 +39,14 @@ namespace Olly {
 
 	class op_call {
 
-		int_t _value;
+		OP_CODE _value;
 
 
 	public:
 
 		op_call();
 		op_call(const op_call& obj);
-		op_call(int_t val);
+		op_call(OP_CODE val);
 		op_call(str_t str);
 		virtual ~op_call();
 
@@ -55,22 +57,20 @@ namespace Olly {
 		friend real_t       __comp__(const op_call& self, const let& other);
 		friend void          __str__(stream_t& out, const op_call& self);
 		friend void         __repr__(stream_t& out, const op_call& self);
-		friend int_t     __integer__(const op_call& self);
-
-		friend bool_t    __op_call__(const op_call& self);
+		friend OP_CODE   __op_code__(const op_call& self);
 	};
 
 
-	op_call::op_call() : _value(0) {
+	op_call::op_call() : _value() {
 	}
 
 	op_call::op_call(const op_call& obj) : _value(obj._value) {
 	}
 
-	op_call::op_call(int_t val) : _value(val) {
+	op_call::op_call(OP_CODE val) : _value(val) {
 	}
 
-	op_call::op_call(str_t str) : _value(0) {
+	op_call::op_call(str_t str) : _value() {
 
 		auto it = OPERATORS.find(str);
 
@@ -91,7 +91,7 @@ namespace Olly {
 	}
 
 	bool __is__(const op_call& self) {
-		return self._value != 0;
+		return self._value != OP_CODE::NOTHING_OP;
 	}
 
 	str_t __type__(const op_call& self) {
@@ -103,9 +103,13 @@ namespace Olly {
 		const op_call* s = other.cast<op_call>();
 
 		if (s) {
-			if (self._value == s->_value) {
-				return 0.0;
+			if (self._value > s->_value) {
+				return 1.0;
 			}
+			if (self._value < s->_value) {
+				return -1.0;
+			}
+			return 0.0;
 		}
 
 		return NOT_A_NUMBER;
@@ -113,7 +117,7 @@ namespace Olly {
 
 	void __str__(stream_t& out, const op_call& self) {
 
-		for (auto it = OPERATORS.begin(); it != OPERATORS.end(); it++) {
+		for (auto it = OPERATORS.cbegin(); it != OPERATORS.cend(); ++it) {
 
 			if (it->second == self._value) {
 
@@ -129,13 +133,9 @@ namespace Olly {
 		__str__(out, self);
 	}
 
-	int_t __integer__(const op_call& self) {
+	OP_CODE __op_code__(const op_call& self) {
 
 		return self._value;
-	}
-
-	bool_t __op_call__(const op_call& self) {
-		return true;
 	}
 
 
@@ -171,7 +171,7 @@ namespace Olly {
 		friend void          __str__(stream_t& out, const symbol& self);
 		friend void         __repr__(stream_t& out, const symbol& self);
 
-		friend bool_t     __symbol__(const symbol& self);
+		friend str_t        __help__(const symbol& self);
 	};
 
 
@@ -207,9 +207,13 @@ namespace Olly {
 		const symbol* s = other.cast<symbol>();
 
 		if (s) {
-			if (self._value == s->_value) {
-				return 0.0;
+			if (self._value > s->_value) {
+				return 1.0;
 			}
+			if (self._value < s->_value) {
+				return -1.0;
+			}
+			return 0.0;
 		}
 
 		return NOT_A_NUMBER;
@@ -223,9 +227,8 @@ namespace Olly {
 		__str__(out, self);
 	}
 
-	bool_t __symbol__(const symbol& self) {
-		return true;
+	str_t __help__(const symbol& self) {
+		return "symbol";
 	}
-
 
 } // end

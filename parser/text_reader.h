@@ -21,7 +21,9 @@
 //			
 /********************************************************************************************/
 
-#include "sys_types.h"
+#include <fstream>
+#include <mutex>
+#include "..\let.h"
 
 namespace Olly {
 
@@ -36,6 +38,10 @@ namespace Olly {
 	/********************************************************************************************/
 
 	class text_reader {
+
+		typedef		char						char_t;
+		typedef		std::fstream				file_t;
+		typedef		std::recursive_mutex		mutex_t;
 
 		char_t      _c;
 		file_t		_input;
@@ -91,7 +97,7 @@ namespace Olly {
 		else {
 			/*
 				Not a file, so send the text to a stream to be
-				treated just like a file.  
+				treated just like a file.
 			*/
 			_file = false;
 			_stream << input_code;
@@ -108,7 +114,7 @@ namespace Olly {
 		}
 	}
 
-	char_t text_reader::next() {
+	text_reader::char_t text_reader::next() {
 		/*
 			As long as the file is not at the end of the file,
 			return the current value of '_c' and set the next
@@ -133,7 +139,7 @@ namespace Olly {
 		return '\0';
 	}
 
-	char_t text_reader::peek() {
+	text_reader::char_t text_reader::peek() {
 		/*
 			Return the current value of '_c'.
 		*/
