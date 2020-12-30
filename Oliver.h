@@ -68,7 +68,7 @@ namespace Olly {
 
 	public:
 		evaluator();
-		evaluator(evaluator& env);
+		evaluator(evaluator& env) = delete;
 
 		let eval(let exp);
 
@@ -83,26 +83,22 @@ namespace Olly {
 		inline void prep_code_to_execute(let& exp) const;
 
 		inline let  get_symbol(let& var) const;
-		inline void set_constant(let& var, let& val, bool_t define_new = false);
-		inline void set_variable(let& var, let& val, bool_t define_new = false);
+		inline void set_constant(let& var, let& val);
+		inline void set_variable(let& var, let& val);
 
 		inline bool_t constant_not_defined(const str_t& symbol_name) const;
+		inline bool_t variable_not_defined(const str_t& symbol_name) const;
 
-		inline void define_stack();
-		inline void delete_stack();
-
+		inline void define_enclosure(let& lam);
 		inline void define_enclosure();
 		inline void delete_enclosure();
 
 		inline void  set_expression_on_code(let exp);
-		inline void  set_expression_on_stack(let exp);
-		inline void  set_expression_to_outer_scope(let exp);
-		inline let   get_expression_from_stack();
-		inline let   get_expression_from_code();
-		inline let  peek_expression_from_code();
-		inline let   get_expression_from_outer_scope();
-		inline void drop_expression_from_code();
-		inline void drop_expression_from_stack();
+		inline void set_expression_on_stack(let exp);
+
+		inline let get_expression_from_stack();
+		inline let  get_expression_from_code();
+		inline let peek_expression_from_code();
 
 		inline bool_t is_operator_call(OP_CODE opr, let val);
 
@@ -126,31 +122,38 @@ namespace Olly {
 	evaluator::evaluator() : _constants(), _variables(), _stack(), _code() {
 	}
 
-	evaluator::evaluator(evaluator& env) : _constants(env._constants), _variables(env._variables), _stack(env._stack), _code(env._code) {
-	}
+	// evaluator::evaluator(evaluator& env) : _constants(env._constants), _variables(env._variables), _stack(env._stack), _code(env._code) {
+	// }
 
 	let evaluator::eval(let exp) {
 
 		if (exp.type() != "expression") {
 			return nothing();
 		}
-
+		
 		prep_code_to_execute(exp);
 
 		_code.push_back(exp);
 
-		define_stack();
 		define_enclosure();
 
 		eval();
 
-		return get_result_stack().reverse();
+		return get_result_stack();
 	}
 
 	inline let Olly::evaluator::get_result_stack() const {
 
 		if (!_stack.empty()) {
-			return _stack[0];
+			
+			let result = expression();
+
+			for (auto i = _stack.crbegin(); i != _stack.crend(); ++i) {
+
+				result = result.place_lead(*i);
+			}
+
+			return result;
 		}
 
 		return expression();
@@ -169,18 +172,7 @@ namespace Olly {
 
 	inline let Olly::evaluator::get_symbol(let& var) const {
 
-		str_t symbol_name = repr(var);
-
-		for (auto i = _variables.crbegin(); i != _variables.crend(); ++i) {
-
-			auto v_itr = i->find(symbol_name);
-
-			if (v_itr != i->end()) {
-				return v_itr->second;
-			}
-		}
-
-		symbol_name = to_upper(symbol_name);
+		str_t symbol_name = str(var);
 
 		for (auto i = _constants.crbegin(); i != _constants.crend(); ++i) {
 
@@ -191,56 +183,49 @@ namespace Olly {
 			}
 		}
 
-		return nothing();
+		for (auto i = _variables.crbegin(); i != _variables.crend(); ++i) {
+
+			auto v_itr = i->find(symbol_name);
+
+			if (v_itr != i->end()) {
+				return v_itr->second;
+			}
+		}
+
+		return error("undefined");
 	}
 
-	inline void Olly::evaluator::set_constant(let& var, let& val, bool_t define_new) {
+	inline void Olly::evaluator::set_constant(let& var, let& val) {
+
+		while (val.type() == "symbol") {
+			val = get_symbol(val);
+		}
 
 		if (!_constants.empty()) {
 
-			str_t symbol_name = to_upper(repr(var));
+			str_t symbol_name = str(var);
 
-			if (define_new) {
-
-				auto c_itr = _constants.back().find(symbol_name);
-
-				if (c_itr != _constants.back().end()) {
-					
-					_constants.back()[symbol_name] = val;
-				}
-			}
-
-			else if (constant_not_defined(symbol_name)) {
+			if (constant_not_defined(symbol_name) && variable_not_defined(symbol_name)) {
 
 				_constants.back()[symbol_name] = val;
 			}
 		}
 	}
 
-	inline void Olly::evaluator::set_variable(let& var, let& val, bool_t define_new) {
+	inline void Olly::evaluator::set_variable(let& var, let& val) {
+
+		while (val.type() == "symbol") {
+			val = get_symbol(val);
+		}
 
 		if (!_variables.empty()) {
 
-			str_t symbol_name = repr(var);
+			str_t symbol_name = str(var);
 
-			if (constant_not_defined(to_upper(symbol_name))) {
+			if (constant_not_defined(symbol_name)) {
 
-				if (define_new) {
-					_variables.back()[symbol_name] = val;
-					return;
-				}
-				
-				for (auto i = _variables.rbegin(); i != _variables.rend(); ++i) {
-
-					auto v_itr = i->find(symbol_name);
-
-					if (v_itr != i->end()) {
-						(*i)[symbol_name] = val;
-						return;
-					}
-				}
+				_variables.back()[symbol_name] = val;
 			}
-			_variables.back()[symbol_name] = val;
 		}
 	}
 
@@ -258,12 +243,26 @@ namespace Olly {
 		return true;
 	}
 
-	inline void Olly::evaluator::define_stack() {
-		_stack.push_back(expression());
+	inline bool_t Olly::evaluator::variable_not_defined(const str_t& symbol_name) const {
+
+		for (auto i = _variables.crbegin(); i != _variables.crend(); ++i) {
+
+			auto c_itr = i->find(symbol_name);
+
+			if (c_itr != i->end()) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
-	inline void Olly::evaluator::delete_stack() {
-		_stack.pop_back();
+	inline void Olly::evaluator::define_enclosure(let& lam) {
+
+		const lambda* l = lam.cast<lambda>();
+
+		_constants.push_back(l->constants());
+		_variables.push_back(l->variables());
 	}
 
 	inline void Olly::evaluator::define_enclosure() {
@@ -284,28 +283,17 @@ namespace Olly {
 	}
 
 	inline void Olly::evaluator::set_expression_on_stack(let exp) {
-
-		if (!_stack.empty()) {
-			_stack.back() = _stack.back().place_lead(exp);
-		}
-	}
-
-	inline void Olly::evaluator::set_expression_to_outer_scope(let exp) {
-
-		if (!_code.empty()) {
-
-			let scope = _code.back();
-			_code.pop_back();
-
-			set_expression_on_code(exp);
-			_code.push_back(scope);
-		}
+		_stack.emplace_back(exp);
 	}
 
 	inline let Olly::evaluator::get_expression_from_stack() {
 
 		if (!_stack.empty()) {
-			return pop_lead(_stack.back());
+
+			let val = _stack.back();
+			_stack.pop_back();
+
+			return val;
 		}
 
 		return error("stack_underflow");
@@ -319,6 +307,7 @@ namespace Olly {
 
 			if (a.is_nothing() && expression_is_empty(_code.back())) {
 				_code.pop_back();
+				return get_expression_from_code();
 			}
 
 			return a;
@@ -335,42 +324,6 @@ namespace Olly {
 		}
 
 		return nothing();
-	}
-
-	inline let Olly::evaluator::get_expression_from_outer_scope() {
-
-		if (!_code.empty()) {
-
-			let scope = _code.back();
-			_code.pop_back();
-
-			let a = get_expression_from_code();
-			_code.push_back(scope);
-
-			return a;
-		}
-
-		return nothing();
-	}
-
-	inline void Olly::evaluator::drop_expression_from_code() {
-
-		if (!_code.empty()) {
-
-			let a = pop_lead(_code.back());
-
-			if (expression_is_empty(_code.back())) {
-				_code.pop_back();
-			}
-		}
-	}
-
-	inline void Olly::evaluator::drop_expression_from_stack() {
-
-		if (!_stack.empty()) {
-
-			_stack.pop_back();
-		}
 	}
 
 	inline bool_t Olly::evaluator::is_operator_call(OP_CODE opr, let val) {
@@ -406,7 +359,28 @@ namespace Olly {
 				}
 			}
 
-			else if (exp.type() != "op_call") {
+			else if (exp.type() == "lambda") {
+
+				let args = exp.lead();
+				let body = exp.last();
+
+				define_enclosure(exp);
+
+				while (args.is()) {
+
+					let var = pop_lead(args);
+					let val = get_expression_from_code();
+
+					if (var.type() == "symbol") {
+						set_variable(var, val);
+					}
+				}
+
+				set_expression_on_code(op_call(OP_CODE::end_scope_op));
+				set_expression_on_code(body);
+			}
+
+			else if (exp.type() != "op_call"  && !exp.is_nothing()) {
 				set_expression_on_stack(exp);
 			}
 
@@ -414,41 +388,43 @@ namespace Olly {
 
 				OP_CODE opr = exp.op_code();
 
-				if (opr < OP_CODE::FUNCTION_SCOPE_OPERATORS) {
-					function_scope_operators(opr);
-				}
+				if (opr > OP_CODE::NOTHING_OP && opr < OP_CODE::END_OPERATORS_OP) {
 
-				else if (opr < OP_CODE::POSTFIX_UNARY_OPERATORS) {
-					postfix_unary_operators(opr);
-				}
+					if (opr < OP_CODE::FUNCTION_SCOPE_OPERATORS) {
+						function_scope_operators(opr);
+					}
 
-				else if (opr < OP_CODE::POSTFIX_BINARY_OPERATORS) {
-					postfix_binary_operators(opr);
-				}
+					else if (opr < OP_CODE::POSTFIX_UNARY_OPERATORS) {
+						postfix_unary_operators(opr);
+					}
 
-				else if (opr < OP_CODE::EXTENDED_LOGIC_OPERATORS) {
-					extended_logical_operators(opr);
-				}
+					else if (opr < OP_CODE::PREFIX_UNARY_OPERATORS) {
+						prefix_unary_operators(opr);
+					}
 
-				else if (opr < OP_CODE::PREFIX_UNARY_OPERATORS) {
-					prefix_unary_operators(opr);
-				}
+					else if (opr < OP_CODE::POSTFIX_BINARY_OPERATORS) {
+						postfix_binary_operators(opr);
+					}
 
-				else if (opr < OP_CODE::INFIX_BINARY_OPERATORS) {
-					infix_binary_operators(opr);
-				}
+					else if (opr < OP_CODE::EXTENDED_LOGIC_OPERATORS) {
+						extended_logical_operators(opr);
+					}
 
-				else if (opr < OP_CODE::ABSTRACTION_OPERATORS) {
-					abstraction_operators(opr);
-				}
+					else if (opr < OP_CODE::INFIX_BINARY_OPERATORS) {
+						infix_binary_operators(opr);
+					}
 
-				switch (opr) {
-				
+					else if (opr < OP_CODE::ABSTRACTION_OPERATORS) {
+						abstraction_operators(opr);
+					}
+
+					switch (opr) {
+
 					case OP_CODE::BREAK_op:
 						run_continous = false;
 						break;
 
-					case OP_CODE::END_op: 
+					case OP_CODE::END_op:
 
 						if (!_code.empty()) {
 							_code.pop_back();
@@ -512,9 +488,11 @@ namespace Olly {
 					case OP_CODE::OVER_op:
 						// DEPTH(env, exp);
 						break;
-			
+
 					default:
 						break;
+					}
+
 				}
 			}
 			
@@ -531,209 +509,185 @@ namespace Olly {
 
 			/****  Scope Enclosure Operators ****/
 
-			case OP_CODE::begin_scope_op: {    // Define a new scope.
-				define_stack();
-				define_enclosure();
-			}	break;
-
-			case OP_CODE::end_scope_op: {    // Delete the current scope.
-				delete_stack();
+			case OP_CODE::end_scope_op: {    // Delete the current enclosure scope.
 				delete_enclosure();
-			}	break;
-
-			case OP_CODE::abstruse_op: {    // Fetch an expression from outside the current scope.
-				let a = get_expression_from_outer_scope();
-				set_expression_on_stack(a);
-			}	break;
-
-			case OP_CODE::abstrude_op: {    // Set an expression to the external scope.
-				let a = get_expression_from_stack();
-				set_expression_to_outer_scope(a);
-			}	break;
-
-			case OP_CODE::CONST_op: {    // Define a constant variable.
-
-				let var = get_expression_from_code();
-				let val = get_expression_from_stack();
-
-				if (var.type() == "symbol") {
-					set_constant(var, val);
-				}
-			}	break;
-
-			case OP_CODE::LET_op: {    // Define a variable.
-
-				let var = get_expression_from_code();
-				let val = get_expression_from_stack();
-
-				if (var.type() == "symbol") {
-					set_variable(var, val);
-				}
 			}	break;
 
 			case OP_CODE::let_op: {  // Presupose the definition of a constant or variable.  
 
-				let var = get_expression_from_code();
-				let opr = get_expression_from_code();
-				let val = get_expression_from_code();
+				let vars = get_expression_from_code();
+				let oper = get_expression_from_code();
+				let vals = get_expression_from_code();
 
-				bool_t run = false;
+				if (oper.op_code() == OP_CODE::apply_op) {
 
-				if (opr.type() == "op_call") {
+					if (vals.type() == "expression") {
 
-					if (opr.op_code() == OP_CODE::const_op) {
+						let l = pop_lead(vals);
 
-						opr = op_call(OP_CODE::CONST_op);
-						run = true;
+						while (l.type() == "symbol") {
+							l = get_symbol(l);
+						}
+
+						vals = vals.place_lead(l);
+
+						Olly::evaluator olly;
+						vals = olly.eval(vals);
+
+						print("vals = " + str(vals));
 					}
-					else if (opr.op_code() == OP_CODE::eq_op) {
 
-						opr = op_call(OP_CODE::LET_op);
-						run = true;
-					}
+					oper = op_call(OP_CODE::eq_op);
 				}
 
-				if (run) {
-					set_expression_on_code(var);
-					set_expression_on_code(opr);
-					set_expression_on_code(val);
+				if (vars.type() != "expression") {
+					vars = expression(vars);
+				}
+
+				if (vals.type() != "expression") {
+					vals = expression(vals);
+				}
+
+				if (oper.type() == "op_call") {
+
+					while (vars.is()) {
+
+						let var = pop_lead(vars);
+						let val = pop_lead(vals);
+
+						if (oper.op_code() == OP_CODE::const_op) {
+
+							if (var.type() == "symbol") {
+								set_constant(var, val);
+							}
+						}
+						else if (oper.op_code() == OP_CODE::eq_op) {
+
+							if (var.type() == "symbol") {
+								set_variable(var, val);
+							}
+						}
+					}
 				}
 
 			}	break;
 
 			case OP_CODE::def_op: {  // Presupose the definition of a constant or variable.  
 
-				let var = get_expression_from_code();
-				let opr = get_expression_from_code();
+				let var  = get_expression_from_code();
+				let args = get_expression_from_code();
+				let body = get_expression_from_code();
+
+				let lam = lambda(args, body);
+
+				set_expression_on_code(lam);
+				set_expression_on_code(op_call(OP_CODE::eq_op));
+				set_expression_on_code(var);
+				set_expression_on_code(op_call(OP_CODE::let_op));
+
+
+			}	break;
+
+			case OP_CODE::bind_op: {  // Bind variables or constants to an enclosure.
+
+				let args = get_expression_from_code();
+				let oper = get_expression_from_code();
+				let lamb = get_expression_from_code();
+
+				let function_name = lamb;
+
+				while (lamb.type() == "symbol") {
+					lamb = get_symbol(lamb);
+				}
+
+				if (lamb.type() == "lambda") {
+
+					OP_CODE op = oper.op_code();
+
+					auto l = lambda(lamb);
+
+					while (args.is()) {
+
+						let arg = pop_lead(args);
+						let val = get_symbol(arg);
+
+						while (val.type() == "symbol") {
+							val = get_symbol(val);
+						}
+
+						switch (op) {
+
+						case OP_CODE::const_op:
+							l.bind_constant(arg, val);
+							break;
+
+						case OP_CODE::eq_op:
+							l.bind_variable(arg, val);
+							break;
+
+						default:
+							break;
+						}
+					}
+
+					lamb = l;
+
+					set_variable(function_name, lamb);
+				}
+				
+			}	break;
+
+			case OP_CODE::return_op: {  // Return an expression from a function, then quite the function.
+
+				let args = get_expression_from_code();
+
+				if (args.type() != "expression") {
+					args = expression(args);
+				}
+
+				let queue = expression();
+
+				while (args.is()) {
+
+					let a = pop_lead(args);
+
+					while (a.type() == "symbol") {
+						a = get_symbol(a);
+					}
+
+					queue = queue.place_lead(a);
+				}
+
+				let end = op_call(OP_CODE::end_scope_op);
+				let itr = get_expression_from_code();
+
+				while (end != itr) {
+					itr = get_expression_from_code();
+				}
+
+				while (queue.is()) {
+
+					let a = pop_lead(queue);
+
+					set_expression_on_code(a);
+				}
+				set_expression_on_code(end);
+
+			} break;
+
+			case OP_CODE::relent_op: { // Place the next expression on to the stack without evaluation.  
+
 				let val = get_expression_from_code();
 
-				if (opr.type() == "op_call" && var.type() == "symbol") {
-
-					if (opr.op_code() == OP_CODE::const_op) {
-
-						set_constant(var, val, true);
-					}
-					else if (opr.op_code() == OP_CODE::eq_op) {
-
-						set_variable(var, val, true);
-					}
+				while (val.type() == "symbol") {
+					val = get_symbol(val);
 				}
-
-			}	break;
-
-			case OP_CODE::EXC_op: {    // Exclose - the current enclosure to the outer enclosure.
-
-				if (_constants.size() >= 2) {
-
-					map_t closure = _constants.back();
-					_constants.pop_back();
-
-					for (auto& it : closure) {
-						_constants.back()[it.first] = it.second;
-					}
-
-					_constants.push_back(closure);
-				}
-
-				if (_variables.size() >= 2) {
-
-					map_t closure = _variables.back();
-					_variables.pop_back();
-
-					for (auto& it : closure) {
-						_variables.back()[it.first] = it.second;
-					}
-
-					_variables.push_back(closure);
-				}
-
-			}	break;
-
-			case OP_CODE::ENC_op: {    // Enclose - the current closure to the sub enclusre.
-
-				let code = get_expression_from_stack();
-
-				let exp = pop_lead(code);
-
-				if (exp.type() == "expression" && exp.lead().type() == "op_call" && exp.lead().op_code() == OP_CODE::begin_scope_op) {
-
-					let l = pop_lead(exp);
-
-					if (!_variables.empty() && !_variables.back().empty()) {
-
-						let vars = expression();
-						let oper = op_call(OP_CODE::LET_op);
-
-						for (auto& it : _variables.back()) {
-
-							let var = symbol(it.first);
-							let val = it.second;
-
-							vars = vars.place_lead(var);
-							vars = vars.place_lead(oper);
-							vars = vars.place_lead(val);
-						}
-
-						exp = exp.place_lead(vars);
-					}
-
-					if (!_constants.empty() && !_constants.back().empty()) {
-
-						let consts = expression();
-						let oper = op_call(OP_CODE::CONST_op);
-
-						for (auto& it : _constants.back()) {
-
-							let var = symbol(it.first);
-							let val = it.second;
-
-							consts = consts.place_lead(val);
-							consts = consts.place_lead(oper);
-							consts = consts.place_lead(var);
-						}
-
-						exp = exp.place_lead(consts);
-					}
-					exp = exp.place_lead(l);
-
-					print("exp = " + str(exp));
-
-					set_expression_on_stack(exp);
-
-					while (code.is()) {
-						let exp = pop_last(code);
-						set_expression_on_code(exp);
-					}
-				}
-
-			}	break;
+				set_expression_on_stack(val);
+			} break;
 
 			default:
 				break;
 		}
-	}
-
-	inline void Olly::evaluator::prefix_unary_operators(OP_CODE& opr) {
-
-		let  x = get_expression_from_code();
-		let op;
-
-		switch (opr) {
-
-			case OP_CODE::neg_op:
-				op = op_call(OP_CODE::NEG_op);
-				break;
-
-			case OP_CODE::not_op:
-				op = op_call(OP_CODE::NOT_op);
-				break;
-
-			default:
-				break;
-		}
-
-		set_expression_on_code(op);
-		set_expression_on_code(x);
 	}
 
 	inline void Olly::evaluator::postfix_unary_operators(OP_CODE& opr) {
@@ -760,6 +714,32 @@ namespace Olly {
 		}
 
 		set_expression_on_stack(y);
+	}
+
+	inline void Olly::evaluator::prefix_unary_operators(OP_CODE& opr) {
+
+		let  x = get_expression_from_code();
+		let op;
+
+		switch (opr) {
+
+		case OP_CODE::neg_op:
+			op = op_call(OP_CODE::NEG_op);
+			break;
+
+		case OP_CODE::not_op:
+			op = op_call(OP_CODE::NOT_op);
+			break;
+
+		default:
+			break;
+		}
+
+		let exp = expression();
+		exp = exp.place_lead(op);
+		exp = exp.place_lead(x);
+
+		set_expression_on_code(exp);
 	}
 
 	inline void Olly::evaluator::postfix_binary_operators(OP_CODE& opr) {
@@ -959,20 +939,6 @@ namespace Olly {
 				let p = get_expression_from_stack();
 				let q = get_expression_from_code();
 
-				if (p.is()) {
-
-					if (is_operator_call(OP_CODE::else_op, peek_expression_from_code())) {
-						drop_expression_from_code();
-						drop_expression_from_code();
-					}
-
-					set_expression_on_code(q);
-				}
-				else if (is_operator_call(OP_CODE::else_op, peek_expression_from_code())) {
-					drop_expression_from_code();
-					print(peek_expression_from_code());
-				}
-
 			}	break;
 
 			case OP_CODE::else_op:   // Logical implication.
@@ -988,7 +954,7 @@ namespace Olly {
 
 				if (conditions.type() == "expression") {
 
-					if (conditions.lead().type() == "op_call" && conditions.lead().op_code() == OP_CODE::begin_scope_op) {
+					if (conditions.lead().type() == "op_call") {
 						conditions = conditions.shift_lead();
 					}
 

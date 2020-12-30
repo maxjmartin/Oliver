@@ -1,0 +1,19 @@
+
+let x = "a" 
+
+def f(x):
+    let (z a) = ('42' "b")
+
+    def g(y):
+        x z a y 
+    ;
+
+    bind (x z a) = g
+
+    relent g
+;
+let g =: (f '1')
+
+g '2'
+x
+g '4'

@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "..\let.h";
+#include "..\let.h"
 
 namespace Olly {
 
@@ -50,7 +50,7 @@ namespace Olly {
 		const tokens_t& _code;
 		tokens_t::const_iterator	_i;
 
-		token_reader();
+		token_reader() = delete;
 		token_reader(const token_reader& obj) = delete;
 	};
 
@@ -59,9 +59,6 @@ namespace Olly {
 	//                               'token_reader' method definition
 	//
 	/********************************************************************************************/
-
-	token_reader::token_reader() : _code(tokens_t()), _i() {
-	}
 
 	token_reader::token_reader(const tokens_t& input_code) : _code(input_code), _i() {
 

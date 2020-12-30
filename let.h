@@ -119,7 +119,6 @@ namespace Olly {
 		template <typename T>          let(T  x);
 		template <typename T>          let(T* x);
 
-		template <typename T> T          as()                           const;  // Define a copy of the object as the specified type.
 		template <typename T> const T* cast()                           const;  // Cast the object as an instance of the specified type.
 
 		str_t             id()                                          const;  // Return the typeid of the object.
@@ -209,7 +208,7 @@ namespace Olly {
 			virtual  ~interface_t() = default;
 			virtual operator bool()                                               const = 0;
 
-			virtual void* __as() = 0;
+			virtual void*         __as()                                                = 0;
 			virtual str_t         __id()                                          const = 0;
 			virtual std::size_t   __hash()                                        const = 0;
 
@@ -343,7 +342,6 @@ namespace Olly {
 
 		nothing();
 		nothing(const nothing& obj);
-		nothing(str_t str);
 		virtual ~nothing();
 
 		friend str_t      __type__(const nothing& self);
@@ -433,34 +431,6 @@ namespace Olly {
 		friend let          __reverse__(const expression& self);
 		friend let              __get__(const expression& self, const let& key);
 		friend let              __set__(const expression& self, const let& key, const let& val);
-	};
-
-	class scope {
-
-		let    _queue;
-		int_t  _len;
-
-	public:
-
-		scope();
-		scope(const scope& exp);
-		scope(let x);
-		virtual ~scope();
-
-		friend str_t           __type__(const scope& self);
-		friend bool_t            __is__(const scope& self);
-		friend real_t          __comp__(const scope& self, const let& other);
-		friend void             __str__(stream_t& out, const scope& self);
-		friend void            __repr__(stream_t& out, const scope& self);
-
-		friend int_t            __len__(const scope& self);
-		friend let             __lead__(const scope& self);
-		friend let             __last__(const scope& self);
-		friend let       __place_lead__(const scope& self, const let& other);
-		friend let       __shift_lead__(const scope& self);
-		friend let          __reverse__(const scope& self);
-		friend let              __get__(const scope& self, const let& key);
-		friend let              __set__(const scope& self, const let& key, const let& val);
 	};
 
 	/********************************************************************************************/
@@ -836,9 +806,6 @@ namespace Olly {
 	nothing::nothing(const nothing& obj) {
 	}
 
-	nothing::nothing(str_t str) {
-	}
-
 	nothing::~nothing() {
 	}
 
@@ -851,7 +818,7 @@ namespace Olly {
 	}
 
 	real_t __comp__(const nothing& self, const let& other) {
-		return NOT_A_NUMBER;
+		return other.is_nothing() ? 0.0 : NOT_A_NUMBER;
 	}
 
 	void __str__(stream_t& out, const nothing& self) {
@@ -1267,142 +1234,6 @@ namespace Olly {
 
 	/********************************************************************************************/
 	//
-	//                               'scope' Class Implimentation
-	//
-	/********************************************************************************************/
-
-	scope::scope() : _queue(__node__()), _len(0) {
-	}
-
-	scope::scope(const scope& exp) : _queue(exp._queue), _len(exp._len) {
-	}
-
-	scope::scope(let x) : _queue(__node__(x)), _len(0) {
-		if (_queue.is()) {
-			_len = 1;
-		}
-	}
-
-	scope::~scope() {
-	}
-
-	std::string __type__(const scope& self) {
-		return "expression";
-	}
-
-	bool_t __is__(const scope& self) {
-
-		if (self._len) {
-			return true;
-		}
-
-		return false;
-	}
-
-	real_t __comp__(const scope& self, const let& other) {
-
-		const scope* e = other.cast<scope >();
-
-		if (e) {
-
-			if (self._len == e->_len) {
-				return (self._queue == e->_queue);
-			}
-		}
-
-		return NOT_A_NUMBER;
-	}
-
-	void __str__(stream_t& out, const scope& self) {
-
-		if (self._len <= 2) {
-			out << ":;";
-			return;
-		}
-
-		self._queue.str(out);
-	}
-
-	void __repr__(stream_t& out, const scope& self) {
-
-		if (self._len <= 2) {
-			out << ":;";
-			return;
-		}
-
-		self._queue.repr(out);
-	}
-
-	int_t __len__(const scope& self) {
-
-		return self._len;
-	}
-
-	let __lead__(const scope& self) {
-
-		return self._queue.lead();
-	}
-
-	let __last__(const scope& self) {
-
-		return self._queue.last();
-	}
-
-	let __place_lead__(const scope& self, const let& other) {
-
-		if (other.is_nothing()) {
-			return self;
-		}
-
-		scope e = self;
-
-		e._queue = e._queue.place_lead(other);
-		e._len += 1;
-
-		return e;
-	}
-
-	let __shift_lead__(const scope& self) {
-
-		if (self._len == 0) {
-			return nothing();
-		}
-
-		scope e = self;
-
-		e._queue = e._queue.shift_lead();
-		e._len -= 1;
-
-		return e;
-	}
-
-	let __reverse__(const scope& self) {
-
-		if (self._len < 2) {
-			return self;
-		}
-
-		scope e = self;
-
-		e._queue = e._queue.reverse();
-
-		return e;
-	}
-
-	let __get__(const scope& self, const let& key) {
-
-		return self._queue.get(key);
-	}
-
-	let __set__(const scope& self, const let& key, const let& val) {
-
-		let new_queue = scope(self._queue.set(key, val));
-
-		return new_queue;
-	}
-
-	/********************************************************************************************/
-	//
 	//                                'let' Class Implementation
 	//
 	/********************************************************************************************/
@@ -1416,18 +1247,6 @@ namespace Olly {
 
 	template <typename T>
 	let::let(T* x) : _self(std::make_shared<data_t<T>>(x)) {
-	}
-
-	template <typename T> T let::as() const {
-
-		T value = T();
-
-		if (_self->__id() == typeid(value).name()) {
-
-			memcpy(&value, const_cast<interface_t*>(_self.get())->__as(), sizeof(T));
-		}
-
-		return value;
 	}
 
 	template <typename T> const T* let::cast() const {

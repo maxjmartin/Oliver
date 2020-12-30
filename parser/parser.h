@@ -26,6 +26,7 @@
 #include "token_reader.h"
 #include "text_reader.h"
 
+#include "..\types\lambda.h"
 #include "..\types\list.h"
 #include "..\types\boolean.h"
 #include "..\types\number.h"
@@ -49,15 +50,16 @@ namespace Olly {
 
 	typedef		std::regex		regex_t;
 
-	static const regex_t  REAL_REGEX("((\\+|-)?[[:digit:]]+)(\\.(([[:digit:]]+)?))?((e|E)((\\+|-)?)[[:digit:]]+)?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
+	// The regex below is currently not in use.  Will see later integration.  
+	// static const regex_t  REAL_REGEX("((\\+|-)?[[:digit:]]+)(\\.(([[:digit:]]+)?))?((e|E)((\\+|-)?)[[:digit:]]+)?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
 
 	class parser {
 
-		typedef		char			char_t;
+		typedef	char char_t;
 
-		text_reader			_input;    // The lexical code file to parse.
-		tokens_t			_text;	   // The parsed code read from the input file.
-		bool_t				_skip;     // Used to identify if a token exists within the bounds of a comment block.
+		text_reader			_input;    // The lexical code to parse.
+		tokens_t			_text;	   // The parsed code read from the input.
+		bool_t				_skip;     // Identifies if a token exists within the bounds of a comment block.
 
 	public:
 
@@ -68,7 +70,7 @@ namespace Olly {
 
 	private:
 
-		parser();
+		parser() = delete;
 		parser(const parser& obj) = delete;
 
 		int_t  is_regex_escape_char(const char& c);
@@ -84,12 +86,10 @@ namespace Olly {
 		str_t object_op(const char& c);
 		str_t expression_op(const char& c);
 		str_t closure_op(const char& c);
-		str_t scope_op(const char& c);
 
 		void skip_comment_line();
 
-		bool_t escape_char(char_t c);
-		bool_t is_number(const str_t& word);
+		bool_t whitespace_char(char_t c);
 
 		let  compile();
 		void compile(str_t& word, token_reader& code, let& exp);
@@ -120,18 +120,18 @@ namespace Olly {
 		while (_input.is()) {
 			/*
 				Loop through any whitespace at the start
-				of the file.
+				of the file.  
 			*/
 
-			if (!escape_char(_input.peek())) {
+			if (!whitespace_char(_input.peek())) {
 				break;
 			}
 
 			_input.next();
 		}
 
-		str_t word;
-		char c;
+		str_t  word;
+		char_t c;
 
 		// _text.push_back("(");
 
@@ -145,7 +145,10 @@ namespace Olly {
 
 			c = _input.next();
 
-			if (!escape_char(c)) {
+			if (!whitespace_char(c)) {
+				/*
+					Identify unary operators, and split thier invocation.
+				*/
 
 				if (word == "-") {
 					_text.push_back("neg");
@@ -153,11 +156,12 @@ namespace Olly {
 				}
 				
 				if (word == "+") {
+					_text.push_back("abs");
 					word = "";
 				}
 			}
 
-			if (escape_char(c) && word != "") {
+			if (whitespace_char(c) && word != "") {
 				/*
 					If white space was encountered and
 					there is a defined word, process
@@ -302,6 +306,11 @@ namespace Olly {
 						_text.push_back(":=");
 						c = _input.next();
 					}
+					else if (_text.back() == "=") {
+						_text.pop_back();
+						_text.push_back("=:");
+						c = _input.next();
+					}
 					else {
 						_text.push_back(closure_op(c));
 					}
@@ -401,7 +410,7 @@ namespace Olly {
 
 			}
 
-			else if (!escape_char(c)) {
+			else if (!whitespace_char(c)) {
 				/*
 					Append any non white space char
 					to the word being formed.
@@ -465,7 +474,7 @@ namespace Olly {
 	void parser::process_word(str_t& word) {
 		/*
 			Check that we are not within a comment block.
-			Else ensure we have a work to handle and place
+			Else ensure we have a word to handle and place
 			it on the back of the text queue.
 		*/
 
@@ -536,32 +545,43 @@ namespace Olly {
 
 			if (escaped) {
 
-				if (c == '\\') {
+				switch (c) {
+
+				case '\\':
 					str += '\\';
-				}
-				else if (c == 'a') {
+					break;
+
+				case 'a':
 					str += '\a';
-				}
-				else if (c == 'b') {
+					break;
+				
+				case 'b':
 					str += '\b';
-				}
-				else if (c == 'f') {
+					break;
+				
+				case 'f':
 					str += '\f';
-				}
-				else if (c == 'n') {
+					break;
+
+				case 'n': 
 					str += '\n';
-				}
-				else if (c == 'r') {
+					break;
+
+				case 'r':
 					str += '\r';
-				}
-				else if (c == 't') {
+					break;
+
+				case 't':
 					str += '\t';
-				}
-				else if (c == 'v') {
+					break;
+				
+				case 'v':
 					str += '\v';
-				}
-				else {
+					break;
+				
+				default:
 					str += c;
+					break;
 				}
 
 				escaped = false;
@@ -712,18 +732,6 @@ namespace Olly {
 		return ";";
 	}
 
-	str_t parser::scope_op(const char& c) {
-		/*
-			Validate whichscope operator is provided.
-		*/
-		if (c == ':') {
-
-			return ":";
-		}
-
-		return ";";
-	}
-
 	void parser::skip_comment_line() {
 		/*
 			Skip all other characters until a newline is encountered.
@@ -739,7 +747,8 @@ namespace Olly {
 			}
 		}
 	}
-	bool_t parser::escape_char(char_t c) {
+
+	bool_t parser::whitespace_char(char_t c) {
 
 		if (c < 32) {
 			return true;
@@ -752,10 +761,6 @@ namespace Olly {
 		return false;
 	}
 
-	bool_t parser::is_number(const str_t& word) {
-		return std::regex_match(word, REAL_REGEX);
-	}
-
 	let parser::compile() {
 
 		token_reader code(_text);
@@ -766,13 +771,6 @@ namespace Olly {
 
 		str_t word;
 		let exp = expression();
-
-		while (code.is()) {
-
-			word = code.next();
-
-			compile(word, code, exp);
-		}
 
 		while (code.is()) {
 
@@ -800,6 +798,23 @@ namespace Olly {
 			return;
 		}
 
+		if (word == "lambda") {
+			
+			let args = expression();
+			word = code.next();
+			compile(word, code, args);
+
+			let body = expression();
+			word = code.next();
+			compile(word, code, body);
+
+			let l = lambda(args.lead(), body.lead());
+
+			exp = exp.place_lead(l);
+
+			return;
+		}
+
 		if (word == "(") {
 
 			let e = expression();
@@ -819,9 +834,9 @@ namespace Olly {
 
 		if (word == ":") {
 
-			let e = scope();
+			let e = expression();
 
-			e = e.place_lead(op_call(OP_CODE::begin_scope_op));
+			// e = e.place_lead(op_call(OP_CODE::begin_scope_op));
 
 			while (code.is() && word != ";") {
 
@@ -831,7 +846,7 @@ namespace Olly {
 			}
 			word = "";
 
-			e = e.place_lead(op_call(OP_CODE::end_scope_op));
+			// e = e.place_lead(op_call(OP_CODE::end_scope_op));
 
 			exp = exp.place_lead(e.reverse());
 

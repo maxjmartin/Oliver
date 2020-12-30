@@ -34,15 +34,17 @@ namespace Olly {
 	const enum class OP_CODE {
 		NOTHING_OP = 0,
 
-			begin_scope_op, end_scope_op, abstruse_op, abstrude_op,
-			CONST_op, LET_op, const_op, let_op, def_op,
-			EXC_op, ENC_op, 
+			end_scope_op, const_op, apply_op, let_op, def_op, bind_op, return_op, relent_op,
 
 		FUNCTION_SCOPE_OPERATORS,
 
 			IS_op, NEG_op, NOT_op,
 
 		POSTFIX_UNARY_OPERATORS,
+
+			neg_op, not_op,
+
+		PREFIX_UNARY_OPERATORS,
 
 			AND_op, OR_op, XOR_op,
 			EQ_op, NE_op, LT_op, LE_op, GT_op, GE_op,
@@ -53,10 +55,6 @@ namespace Olly {
 			imply_op, else_op, cond_op, is_const_op, is_var_op, LOOP_op, loop_op,
 
 		EXTENDED_LOGIC_OPERATORS,
-
-			neg_op, not_op,
-
-		PREFIX_UNARY_OPERATORS,
 
 			and_op, or_op, xor_op, 
 			eq_op, ne_op, lt_op, le_op, gt_op, ge_op,
@@ -84,7 +82,9 @@ namespace Olly {
 		LEAD_op, SHIFT_op, PLACE_op, lead_op, shift_op, place_op,
 		
 		IN_EQ_op, IN_NE_op, IN_LT_op, IN_LE_op, IN_GT_op, IN_GE_op,
-		IS_TRUE_op, IF_TRUE_op,  if_op
+		IS_TRUE_op, IF_TRUE_op,  if_op,
+
+		END_OPERATORS_OP
 	};
 
 	/********************************************************************************************/
@@ -97,14 +97,19 @@ namespace Olly {
 
 		{ "none",      OP_CODE::NOTHING_OP },   { "nothing",  OP_CODE::NOTHING_OP },
 
-
-		{ ":",	   OP_CODE::begin_scope_op },	{ "<==",     OP_CODE::abstruse_op },
-		{ ";",	     OP_CODE::end_scope_op },	{ "==>",	 OP_CODE::abstrude_op },
-
 		{ ":=",	         OP_CODE::const_op },
+		{ "=:",	         OP_CODE::apply_op },
 		{ "let",	       OP_CODE::let_op },
-		{ "ENC",	       OP_CODE::ENC_op },
 		{ "def",           OP_CODE::def_op },
+		{ "bind",         OP_CODE::bind_op },
+		{ "return",     OP_CODE::return_op },
+		{ "relent",     OP_CODE::relent_op },
+
+		{ "?",			    OP_CODE::IS_op },
+		{ "NEG",	       OP_CODE::NEG_op },
+		{ "NOT",	       OP_CODE::NOT_op },
+
+		{ "neg",	       OP_CODE::neg_op },
 		
 		{ "loop",		  OP_CODE::loop_op },
 		{ "imply",		 OP_CODE::imply_op },   { "else",		 OP_CODE::else_op },
@@ -123,14 +128,12 @@ namespace Olly {
 		{ "cond",		  OP_CODE::cond_op },
 		{ "const?",	  OP_CODE::is_const_op },
 		{ "var?",		OP_CODE::is_var_op },
-		{ "?",			    OP_CODE::IS_op },
 
 		{ "+",		       OP_CODE::add_op },
 		{ "-",		       OP_CODE::sub_op },
 		{ "*",		       OP_CODE::mul_op },
 		{ "/",		       OP_CODE::div_op },
 		{ "mod",	       OP_CODE::mod_op },
-		{ "neg",	       OP_CODE::neg_op },
 		{ "//",		      OP_CODE::fdiv_op },
 		{ "rem",           OP_CODE::rem_op },
 		{ "**",            OP_CODE::pow_op },
