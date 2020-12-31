@@ -1,6 +1,9 @@
 # Test-Interpreter
 An (experimental) immutable interpreted programming language. Written in C++, and inspired by Python, Lisp, and Forth. It is designed to be thread safe and suitable for real time systems.  This was written to understand how programming languages can be implemented.  
 
+### Code Comments
+Comments may be added to code using the operator '#'.  A single '#' will comment out the remainder of a line of text.  A double '##' will comment out all code until another '##' has been encountered.  Using '##' operators requires at least one whitespace character between each operator.  
+
 ### Expressions
 Oliver accepts and evaluates expressions.  And returns the result the expression evaluation.  In general expression may be bound by the pair of characters ( and ) or also : and ;.  
 ```
@@ -55,3 +58,6 @@ def f(x):
     x * '2'
 ;
 ```
+
+### Whitespace
+Whitespace is used to separate individual expression of code which are not defined using a specific character or characters to indicate the start and the stop of an expression.  
