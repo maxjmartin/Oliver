@@ -48,7 +48,7 @@ let z = lambda(x y): y ;    # Assign an anonymous function as the value of z.
 If an expression needs to be evaluated before it can be assigned as the value of a constant or variable, the application assignment operator '=:' can be used for variables, and ':=:' can be used for constants.
 ```
 let x =: (f '42')   # Assign the result of the application of f('42') to the variable x.
-let y :=: (g '42')  # Assign the result of the application of g('42) to the variable y.
+let y :=: (g '42')  # Assign the result of the application of g('42') to the variable y.
 ```
 
 ### Named Functions
