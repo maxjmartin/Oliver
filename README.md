@@ -59,5 +59,23 @@ def f(x):
 ;
 ```
 
+### Return and Relent
+Functions may contain a 'return' or a 'relent' statement.  Return statements accept an expression, and then place the individual elements of the expression on to the code expression to be evaluated.  Relent statements accept an expression and place it on to the stack expression without being evaluated.  
+
+### Function Currying
+Functions can be curryed and returned as the result of another function.  But for any returned function free variables within the function will be undefined unless the variable is bound to the function using a 'bind' statement.
+```
+def f(x):
+    def g(y):
+        return x * y
+    ;
+    bind (x) g
+
+    relent g
+;
+let n =: (f '2')
+```
+In the above code we relent the function 'g' as the result of function 'f'.  But before we do that the value of 'x' must be bound to 'g'.  Bind statement accept two parameters.  An expression of variables or constants to be bound, followed by the name of the function to be bound too.  
+
 ### Whitespace
 Whitespace is used to separate individual expression of code which are not defined using a specific character or characters to indicate the start and the stop of an expression.  
