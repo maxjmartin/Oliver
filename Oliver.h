@@ -96,14 +96,15 @@ namespace Olly {
 		inline let  get_expression_from_code();
 		inline let peek_expression_from_code();
 
-		inline void            stack_operators(OP_CODE& opr);
-		inline void   function_scope_operators(OP_CODE& opr);
-		inline void         sequence_operators(OP_CODE& opr);
-		inline void               io_operators(OP_CODE& opr);
 		inline void     prefix_unary_operators(OP_CODE& opr);
 		inline void    postfix_unary_operators(OP_CODE& opr);
 		inline void	    infix_binary_operators(OP_CODE& opr);
 		inline void   postfix_binary_operators(OP_CODE& opr);
+		inline void            stack_operators(OP_CODE& opr);
+		inline void   function_scope_operators(OP_CODE& opr);
+		inline void         sequence_operators(OP_CODE& opr);
+		inline void               io_operators(OP_CODE& opr);
+
 		inline void extended_logical_operators(OP_CODE& opr);
 		inline void      abstraction_operators(OP_CODE& opr);
 	};
@@ -343,23 +344,7 @@ namespace Olly {
 
 				if (opr > OP_CODE::NOTHING_OP && opr < OP_CODE::END_OPERATORS_OP) {
 
-					if (opr < OP_CODE::STACK_OPERATORS) {
-						stack_operators(opr);
-					}
-
-					else if (opr < OP_CODE::FUNCTION_SCOPE_OPERATORS) {
-						function_scope_operators(opr);
-					}
-
-					else if (opr < OP_CODE::SEQUENCE_OPERATORS) {
-						sequence_operators(opr);
-					}
-
-					else if (opr < OP_CODE::IO_OPERATORS) {
-						io_operators(opr);
-					}
-
-					else if (opr < OP_CODE::PREFIX_UNARY_OPERATORS) {
+					if (opr < OP_CODE::PREFIX_UNARY_OPERATORS) {
 						prefix_unary_operators(opr);
 					}
 
@@ -374,10 +359,261 @@ namespace Olly {
 					else if (opr < OP_CODE::POSTFIX_BINARY_OPERATORS) {
 						postfix_binary_operators(opr);
 					}
+
+					else if (opr < OP_CODE::STACK_OPERATORS) {
+						stack_operators(opr);
+					}
+
+					else if (opr < OP_CODE::FUNCTION_SCOPE_OPERATORS) {
+						function_scope_operators(opr);
+					}
+
+					else if (opr < OP_CODE::SEQUENCE_OPERATORS) {
+						sequence_operators(opr);
+					}
+
+					else if (opr < OP_CODE::IO_OPERATORS) {
+						io_operators(opr);
+					}
 				}
 			}
 			
 		} while (!_code.empty() && run_continous);
+	}
+
+	inline void Olly::evaluator::prefix_unary_operators(OP_CODE& opr) {
+
+		let  x = get_expression_from_code();
+		let op;
+
+		switch (opr) {
+
+		case OP_CODE::neg_op:
+			op = op_call(OP_CODE::NEG_op);
+			break;
+
+		case OP_CODE::not_op:
+			op = op_call(OP_CODE::NOT_op);
+			break;
+
+		default:
+			break;
+		}
+
+		let exp = expression();
+		exp = exp.place_lead(op);
+		exp = exp.place_lead(x);
+
+		set_expression_on_code(exp);
+	}
+
+	inline void Olly::evaluator::postfix_unary_operators(OP_CODE& opr) {
+
+		let x = get_expression_from_stack();
+		let y;
+
+		switch (opr) {
+
+		case OP_CODE::IS_op:
+			y = boolean(x.is());
+			break;
+
+		case OP_CODE::NEG_op:
+			y = x.neg();
+			break;
+
+		case OP_CODE::NOT_op:
+			y = boolean(x.l_not());
+			break;
+
+		default:
+			break;
+		}
+
+		set_expression_on_stack(y);
+	}
+
+	inline void Olly::evaluator::infix_binary_operators(OP_CODE& opr) {
+
+		let  x = get_expression_from_code();
+		let op;
+
+		switch (opr) {
+
+			/**** Logical Operators ****/
+
+		case OP_CODE::and_op:
+			op = op_call(OP_CODE::AND_op);
+			break;
+
+		case OP_CODE::or_op:
+			op = op_call(OP_CODE::OR_op);
+			break;
+
+		case OP_CODE::xor_op:
+			op = op_call(OP_CODE::XOR_op);
+			break;
+
+
+			/**** Comparision Operations ****/
+
+		case OP_CODE::eq_op:
+			op = op_call(OP_CODE::EQ_op);
+			break;
+
+		case OP_CODE::ne_op:
+			op = op_call(OP_CODE::NE_op);
+			break;
+
+		case OP_CODE::lt_op:
+			op = op_call(OP_CODE::LT_op);
+			break;
+
+		case OP_CODE::le_op:
+			op = op_call(OP_CODE::LE_op);
+			break;
+
+		case OP_CODE::gt_op:
+			op = op_call(OP_CODE::GT_op);
+			break;
+
+		case OP_CODE::ge_op:
+			op = op_call(OP_CODE::GE_op);
+			break;
+
+
+			/**** Base Mathmatical Operations ****/
+
+		case OP_CODE::add_op:
+			op = op_call(OP_CODE::ADD_op);
+			break;
+
+		case OP_CODE::sub_op:
+			op = op_call(OP_CODE::SUB_op);
+			break;
+
+		case OP_CODE::mul_op:
+			op = op_call(OP_CODE::MUL_op);
+			break;
+
+		case OP_CODE::div_op:
+			op = op_call(OP_CODE::DIV_op);
+			break;
+
+		case OP_CODE::mod_op:
+			op = op_call(OP_CODE::MOD_op);
+			break;
+
+		case OP_CODE::fdiv_op:
+			op = op_call(OP_CODE::FDIV_op);
+			break;
+
+		case OP_CODE::rem_op:
+			op = op_call(OP_CODE::REM_op);
+			break;
+
+		case OP_CODE::pow_op:
+			op = op_call(OP_CODE::POW_op);
+			break;
+
+		default:
+			break;
+		}
+
+		set_expression_on_code(op);
+		set_expression_on_code(x);
+	}
+
+	inline void Olly::evaluator::postfix_binary_operators(OP_CODE& opr) {
+
+		let y = get_expression_from_stack();
+		let x = get_expression_from_stack();
+
+		let z;
+
+		switch (opr) {
+
+			/**** Logical Operators ****/
+
+		case OP_CODE::AND_op:
+			z = boolean(x.l_and(y));
+			break;
+
+		case OP_CODE::OR_op:
+			z = boolean(x.l_or(y));
+			break;
+
+		case OP_CODE::XOR_op:
+			z = boolean(x.l_xor(y));
+			break;
+
+
+			/**** Comparision Operations ****/
+
+		case OP_CODE::EQ_op:
+			z = boolean(x == y);
+			break;
+
+		case OP_CODE::NE_op:
+			z = boolean(x != y);
+			break;
+
+		case OP_CODE::LT_op:
+			z = boolean(x < y);
+			break;
+
+		case OP_CODE::LE_op:
+			z = boolean(x <= y);
+			break;
+
+		case OP_CODE::GT_op:
+			z = boolean(x > y);
+			break;
+
+		case OP_CODE::GE_op:
+			z = boolean(x >= y);
+			break;
+
+
+			/**** Base Mathmatical Operations ****/
+
+		case OP_CODE::ADD_op:
+			z = x + y;
+			break;
+
+		case OP_CODE::SUB_op:
+			z = x - y;
+			break;
+
+		case OP_CODE::MUL_op:
+			z = x * y;
+			break;
+
+		case OP_CODE::DIV_op:
+			z = x / y;
+			break;
+
+		case OP_CODE::MOD_op:
+			z = x % y;
+			break;
+
+		case OP_CODE::FDIV_op:
+			z = x.f_div(y);
+			break;
+
+		case OP_CODE::REM_op:
+			z = x.rem(y);
+			break;
+
+		case OP_CODE::POW_op:
+			z = x.pow(y);
+			break;
+
+		default:
+			break;
+		}
+
+		set_expression_on_stack(z);
 	}
 
 	inline void Olly::evaluator::stack_operators(OP_CODE& opr) {
@@ -793,241 +1029,6 @@ namespace Olly {
 			default:
 				break;
 		}
-	}
-
-	inline void Olly::evaluator::prefix_unary_operators(OP_CODE& opr) {
-
-		let  x = get_expression_from_code();
-		let op;
-
-		switch (opr) {
-
-		case OP_CODE::neg_op:
-			op = op_call(OP_CODE::NEG_op);
-			break;
-
-		case OP_CODE::not_op:
-			op = op_call(OP_CODE::NOT_op);
-			break;
-
-		default:
-			break;
-		}
-
-		let exp = expression();
-		exp = exp.place_lead(op);
-		exp = exp.place_lead(x);
-
-		set_expression_on_code(exp);
-	}
-
-	inline void Olly::evaluator::postfix_unary_operators(OP_CODE& opr) {
-
-		let x = get_expression_from_stack();
-		let y;
-
-		switch (opr) {
-
-			case OP_CODE::IS_op:
-				y = boolean(x.is());
-				break;
-
-			case OP_CODE::NEG_op:
-				y = x.neg();
-				break;
-
-			case OP_CODE::NOT_op:	
-				y = boolean(x.l_not());
-				break;
-
-			default:
-				break;
-		}
-
-		set_expression_on_stack(y);
-	}
-
-	inline void Olly::evaluator::infix_binary_operators(OP_CODE& opr) {
-
-		let  x = get_expression_from_code();
-		let op;
-
-		switch (opr) {
-
-			/**** Logical Operators ****/
-
-		case OP_CODE::and_op:
-			op = op_call(OP_CODE::AND_op);
-			break;
-
-		case OP_CODE::or_op:
-			op = op_call(OP_CODE::OR_op);
-			break;
-
-		case OP_CODE::xor_op:
-			op = op_call(OP_CODE::XOR_op);
-			break;
-
-
-			/**** Comparision Operations ****/
-
-		case OP_CODE::eq_op:
-			op = op_call(OP_CODE::EQ_op);
-			break;
-
-		case OP_CODE::ne_op:
-			op = op_call(OP_CODE::NE_op);
-			break;
-
-		case OP_CODE::lt_op:
-			op = op_call(OP_CODE::LT_op);
-			break;
-
-		case OP_CODE::le_op:
-			op = op_call(OP_CODE::LE_op);
-			break;
-
-		case OP_CODE::gt_op:
-			op = op_call(OP_CODE::GT_op);
-			break;
-
-		case OP_CODE::ge_op:
-			op = op_call(OP_CODE::GE_op);
-			break;
-
-
-			/**** Base Mathmatical Operations ****/
-
-		case OP_CODE::add_op:
-			op = op_call(OP_CODE::ADD_op);
-			break;
-
-		case OP_CODE::sub_op:
-			op = op_call(OP_CODE::SUB_op);
-			break;
-
-		case OP_CODE::mul_op:
-			op = op_call(OP_CODE::MUL_op);
-			break;
-
-		case OP_CODE::div_op:
-			op = op_call(OP_CODE::DIV_op);
-			break;
-
-		case OP_CODE::mod_op:
-			op = op_call(OP_CODE::MOD_op);
-			break;
-
-		case OP_CODE::fdiv_op:
-			op = op_call(OP_CODE::FDIV_op);
-			break;
-
-		case OP_CODE::rem_op:
-			op = op_call(OP_CODE::REM_op);
-			break;
-
-		case OP_CODE::pow_op:
-			op = op_call(OP_CODE::POW_op);
-			break;
-
-		default:
-			break;
-		}
-
-		set_expression_on_code(op);
-		set_expression_on_code(x);
-	}
-
-	inline void Olly::evaluator::postfix_binary_operators(OP_CODE& opr) {
-
-		let y = get_expression_from_stack();
-		let x = get_expression_from_stack();
-
-		let z;
-
-		switch (opr) {
-
-			/**** Logical Operators ****/
-
-			case OP_CODE::AND_op:
-				z = boolean(x.l_and(y));
-				break;
-
-			case OP_CODE::OR_op:
-				z = boolean(x.l_or(y));
-				break;
-
-			case OP_CODE::XOR_op:
-				z = boolean(x.l_xor(y));
-				break;
-
-
-			/**** Comparision Operations ****/
-
-			case OP_CODE::EQ_op:
-				z = boolean(x == y);
-				break;
-
-			case OP_CODE::NE_op: 
-				z = boolean(x != y);
-				break;
-
-			case OP_CODE::LT_op:
-				z = boolean(x < y);
-				break;
-
-			case OP_CODE::LE_op: 
-				z = boolean(x <= y);
-				break;
-
-			case OP_CODE::GT_op:
-				z = boolean(x > y);
-				break;
-
-			case OP_CODE::GE_op: 
-				z = boolean(x >= y);
-				break;
-
-
-			/**** Base Mathmatical Operations ****/
-
-			case OP_CODE::ADD_op:
-				z = x + y;
-				break;
-
-			case OP_CODE::SUB_op: 
-				z = x - y;
-				break;
-
-			case OP_CODE::MUL_op: 
-				z = x * y;
-				break;
-
-			case OP_CODE::DIV_op: 
-				z = x / y;
-				break;
-
-			case OP_CODE::MOD_op:
-				z = x % y;
-				break;
-
-			case OP_CODE::FDIV_op: 
-				z = x.f_div(y);
-				break;
-
-			case OP_CODE::REM_op: 
-				z = x.rem(y);
-				break;
-
-			case OP_CODE::POW_op:
-				z = x.pow(y);
-				break;
-
-			default:
-				break;
-		}
-
-		set_expression_on_stack(z);
 	}
 
 	inline void Olly::evaluator::extended_logical_operators(OP_CODE& opr) {

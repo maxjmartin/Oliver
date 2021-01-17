@@ -896,7 +896,7 @@ namespace Olly {
 
 				let opr = op_call(it->second);
 
-				if (it->second > OP_CODE::IO_OPERATORS && it->second < OP_CODE::PREFIX_UNARY_OPERATORS) {
+				if (it->second < OP_CODE::PREFIX_UNARY_OPERATORS) {
 					/*
 						Handle prefix unary operators by placing the next code expression
 						and it within it own expression.  This ensures that binary operators

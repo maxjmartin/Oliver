@@ -34,26 +34,6 @@ namespace Olly {
 	const enum class OP_CODE {
 		NOTHING_OP = 0,
 
-			STACK_op, DEPTH_op, MAX_DEPTH_op, SET_STACK_op,
-
-		STACK_OPERATORS,
-
-			end_scope_op, let_op, def_op, bind_op, return_op, relent_op,
-			LET_op,
-
-		FUNCTION_SCOPE_OPERATORS,
-
-			LEN_op, len_op, LEAD_op, lead_op, LAST_op, last_op,
-			PLACE_LEAD_op, place_lead_op, PLACE_LAST_op, place_last_op,
-			SHIFT_LEAD_op, shift_lead_op, SHIFT_LAST_op, shift_last_op,
-			iterable_op, GET_op, SET_op, index_op, iter_op, ITER_op,
-
-		SEQUENCE_OPERATORS,
-		 
-			PRINT_op,
-			
-		IO_OPERATORS,
-
 			neg_op, not_op,
 
 		PREFIX_UNARY_OPERATORS,
@@ -73,6 +53,26 @@ namespace Olly {
 			ADD_op, SUB_op, MUL_op, DIV_op, MOD_op, FDIV_op, REM_op, POW_op,
 
 		POSTFIX_BINARY_OPERATORS,
+
+			STACK_op, DEPTH_op, MAX_DEPTH_op, SET_STACK_op,
+
+		STACK_OPERATORS,
+
+			end_scope_op, let_op, def_op, bind_op, return_op, relent_op,
+			LET_op,
+
+		FUNCTION_SCOPE_OPERATORS,
+
+			LEN_op, len_op, LEAD_op, lead_op, LAST_op, last_op,
+			PLACE_LEAD_op, place_lead_op, PLACE_LAST_op, place_last_op,
+			SHIFT_LEAD_op, shift_lead_op, SHIFT_LAST_op, shift_last_op,
+			iterable_op, GET_op, SET_op, index_op, iter_op, ITER_op,
+
+		SEQUENCE_OPERATORS,
+		 
+			PRINT_op,
+			
+		IO_OPERATORS,
 
 
 
@@ -113,29 +113,6 @@ namespace Olly {
 		{ "none",            OP_CODE::NOTHING_OP },   
 		{ "nothing",         OP_CODE::NOTHING_OP },
 
-		{ "_STACK_",           OP_CODE::STACK_op },
-		{ "_DEPTH_",           OP_CODE::DEPTH_op },
-		{ "_MAX_DEPTH_",   OP_CODE::MAX_DEPTH_op },
-		{ "_SET_STACK_",   OP_CODE::SET_STACK_op },		
-
-		{ "let",	             OP_CODE::let_op },
-		{ "def",                 OP_CODE::def_op },
-		{ "bind",               OP_CODE::bind_op },
-		{ "return",           OP_CODE::return_op },
-		{ "relent",           OP_CODE::relent_op },
-
-		{ "len",                 OP_CODE::len_op },
-		{ "lead",               OP_CODE::lead_op },
-		{ "last",               OP_CODE::last_op },
-		{ "-->",          OP_CODE::place_lead_op },
-		{ "<--",          OP_CODE::place_last_op },
-		{ "<<<",          OP_CODE::shift_lead_op },
-		{ ">>>",          OP_CODE::shift_last_op },
-		{ "itr?",           OP_CODE::iterable_op },
-		{ ".",                 OP_CODE::index_op },
-
-		{ "PRINT",	           OP_CODE::PRINT_op },
-
 		{ "neg",	             OP_CODE::neg_op },
 		{ "not",		         OP_CODE::not_op },
 
@@ -162,6 +139,29 @@ namespace Olly {
 		{ "//",		            OP_CODE::fdiv_op },
 		{ "rem",                 OP_CODE::rem_op },
 		{ "**",                  OP_CODE::pow_op },
+
+		{ "_STACK_",           OP_CODE::STACK_op },
+		{ "_DEPTH_",           OP_CODE::DEPTH_op },
+		{ "_MAX_DEPTH_",   OP_CODE::MAX_DEPTH_op },
+		{ "_SET_STACK_",   OP_CODE::SET_STACK_op },		
+
+		{ "let",	             OP_CODE::let_op },
+		{ "def",                 OP_CODE::def_op },
+		{ "bind",               OP_CODE::bind_op },
+		{ "return",           OP_CODE::return_op },
+		{ "relent",           OP_CODE::relent_op },
+
+		{ "len",                 OP_CODE::len_op },
+		{ "lead",               OP_CODE::lead_op },
+		{ "last",               OP_CODE::last_op },
+		{ "-->",          OP_CODE::place_lead_op },
+		{ "<--",          OP_CODE::place_last_op },
+		{ "<<<",          OP_CODE::shift_lead_op },
+		{ ">>>",          OP_CODE::shift_last_op },
+		{ "itr?",           OP_CODE::iterable_op },
+		{ ".",                 OP_CODE::index_op },
+
+		{ "PRINT",	           OP_CODE::PRINT_op },
 
 		/****************************************************************************/
 
