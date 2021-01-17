@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "let.h"
+#include "expression.h"
 
 namespace Olly {
 
@@ -39,24 +39,24 @@ namespace Olly {
 
 	class boolean {
 
-		real_t _term;
-		real_t _weight;
+		real_type _term;
+		real_type _weight;
 
 	public:
 
 		boolean();
 		boolean(const boolean& obj);
 		boolean(std::string str);
-		boolean(const int_t& n, real_t t = 1.0);
-		boolean(const bool_t& n, real_t t = 1.0);
-		boolean(const real_t& n, real_t t = 1.0);
+		boolean(const int_type& n, real_type t = 1.0);
+		boolean(const bool_type& n, real_type t = 1.0);
+		boolean(const real_type& n, real_type t = 1.0);
 		virtual ~boolean();
 
-		friend str_t         __type__(const boolean& self);
-		friend bool_t          __is__(const boolean& self);
-		friend real_t        __comp__(const boolean& self, const let& other);
-		friend void           __str__(stream_t& out, const boolean& self);
-		friend void          __repr__(stream_t& out, const boolean& self);
+		friend str_type         _type_(const boolean& self);
+		friend bool_type          _is_(const boolean& self);
+		friend real_type        _comp_(const boolean& self, const let& other);
+		friend void           _str_(stream_type& out, const boolean& self);
+		friend void          _repr_(stream_type& out, const boolean& self);
 	};
 
 
@@ -88,7 +88,7 @@ namespace Olly {
 		}
 	}
 
-	boolean::boolean(const int_t& n, real_t t) : _term(0.0), _weight(NOT_A_NUMBER) {
+	boolean::boolean(const int_type& n, real_type t) : _term(0.0), _weight(NOT_A_NUMBER) {
 
 		if (n) {
 			_term = 1.0;
@@ -99,7 +99,7 @@ namespace Olly {
 		}
 	}
 
-	boolean::boolean(const bool_t& n, real_t t) : _term(0.0), _weight(NOT_A_NUMBER) {
+	boolean::boolean(const bool_type& n, real_type t) : _term(0.0), _weight(NOT_A_NUMBER) {
 
 		if (n) {
 			_term = 1.0;
@@ -110,7 +110,7 @@ namespace Olly {
 		}
 	}
 
-	boolean::boolean(const real_t& n, real_t t) : _term(NOT_A_NUMBER), _weight(NOT_A_NUMBER) {
+	boolean::boolean(const real_type& n, real_type t) : _term(NOT_A_NUMBER), _weight(NOT_A_NUMBER) {
 
 		if (n <= 1.0 && n >= 0) {
 			_term = n;
@@ -124,22 +124,22 @@ namespace Olly {
 	boolean::~boolean() {
 	}
 
-	std::string __type__(const boolean& self) {
+	std::string _type_(const boolean& self) {
 		return "boolean";
 	}
 
-	bool __is__(const boolean& self) {
+	bool _is_(const boolean& self) {
 		return self._term >= self._weight;
 	}
 
-	real_t __comp__(const boolean& self, const let& other) {
+	real_type _comp_(const boolean& self, const let& other) {
 
 		const boolean* b = other.cast<boolean>();
 
 		if (b) {
 
-			bool p = __is__(self);
-			bool q = __is__(b);
+			bool p = _is_(self);
+			bool q = _is_(b);
 
 			if (p > q) {
 				return 1.0;
@@ -155,7 +155,7 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const boolean& self) {
+	void _str_(stream_type& out, const boolean& self) {
 
 		if (self._term != self._term) {
 
@@ -164,10 +164,10 @@ namespace Olly {
 			return;
 		}
 
-		out << __is__(self);
+		out << _is_(self);
 	}
 
-	void __repr__(stream_t& out, const boolean& self) {
+	void _repr_(stream_type& out, const boolean& self) {
 
 		out << "('" << self._term << "' '" << self._weight << "' BOOL)";
 	}

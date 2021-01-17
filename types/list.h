@@ -21,10 +21,12 @@
 //			
 /********************************************************************************************/
 
-#include "..\let.h"
+#include <vector>
+
+#include "expression.h"
+#include "number.h"
 
 namespace Olly {
-
 	
 	/********************************************************************************************/
 	//
@@ -38,34 +40,42 @@ namespace Olly {
 
 	class list {
 
-		let    _lead;
-		let    _last;
-		int_t  _size;
-
 	public:
+
+		typedef     std::vector<let>	  list_type;
 
 		list();
 		list(const list& exp);
 		list(let exp);
 		virtual ~list();
 
-		friend str_t           __type__(const list& self);
-		friend bool_t            __is__(const list& self);
-		friend real_t          __comp__(const list& self, const let& other);
-		friend void             __str__(stream_t& out, const list& self);
-		friend void            __repr__(stream_t& out, const list& self);
+		friend str_type           _type_(const list& self);
+		friend bool_type            _is_(const list& self);
+		friend real_type          _comp_(const list& self, const let& other);
+		friend void                _str_(stream_type& out, const list& self);
+		friend void               _repr_(stream_type& out, const list& self);
 
-		friend int_t            __len__(const list& self);
-		friend let             __lead__(const list& self);
-		friend let             __last__(const list& self);
-		friend let       __place_lead__(const list& self, const let& other);
-		friend let       __shift_lead__(const list& self);
-		friend let       __place_last__(const list& self, const let& other);
-		friend let       __shift_last__(const list& self);
-		friend let          __reverse__(const list& self);
+		friend size_type          _size_(const list& self);
+		friend let                _lead_(const list& self);
+		friend let                _last_(const list& self);
+		friend let          _place_lead_(const list& self, const let& other);
+		friend let          _shift_lead_(const list& self);
+		friend let          _place_last_(const list& self, const let& other);
+		friend let          _shift_last_(const list& self);
+		friend let             _reverse_(const list& self);
+
+		friend let                 _get_(const list& self, const let& key);
+		friend let                 _set_(const list& self, const let& key, const let& val);
+		friend let                 _itr_(const list& self);
+
+		friend bool_type     _interable_(const list& self);
+
+		const list_type& get_list() const;
+
+		let begin();
 
 	private:
-		void  balance();
+		list_type    _list;
 	};
 
 	/********************************************************************************************/
@@ -74,47 +84,45 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	list::list() : _lead(__node__()), _last(__node__()), _size(0) {
+	list::list() : _list() {
 	}
 
-	list::list(const list& exp) : _lead(exp._lead), _last(exp._last), _size(exp._size) {
+	list::list(const list& exp) : _list(exp._list) {
 	}
 
-	list::list(let exp) : _lead(__node__()), _last(__node__()), _size(0) {
+	list::list(let exp) : _list() {
 		
+		_list.reserve(exp.size());
+
 		while (exp.is()) {
 
-			_lead = _lead.place_lead(pop_lead(exp));
-
-			_size += 1;
+			_list.emplace_back(pop_lead(exp));
 		}
-
-		balance();
 	}
 
 	list::~list() {
 	}
 
-	std::string __type__(const list& self) {
+	std::string _type_(const list& self) {
 		return "list";
 	}
 
-	bool_t __is__(const list& self) {
+	bool_type _is_(const list& self) {
 
-		if (self._lead.is() || self._last.is()) {
+		if (_size_(self) > 0) {
 			return true;
 		}
 
 		return false;
 	}
 
-	real_t __comp__(const list& self, const let& other) {
+	real_type _comp_(const list& self, const let& other) {
 
 		const list* e = other.cast<list>();
 
 		if (e) {
 
-			if ((self._lead == e->_lead) && (self._last == e->_last)) {
+			if (self._list == e->_list) {
 				return 0.0;
 			}
 		}
@@ -122,75 +130,69 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const list& self) {
+	void _str_(stream_type& out, const list& self) {
 
-		if (!__is__(self)) {
+		if (self._list.empty()) {
 			out << "[]";
 			return;
 		}
 
 		out << "[";
 
-		out << str(self._lead);
+		for (auto i = self._list.cbegin(); i != self._list.cend(); ++i) {
 
-		if (self._last.is()) {
-
-			if (self._lead.is()) {
-				out << " ";
-			}
-
-			out << str(self._last.reverse());
+			i->str(out);
+			out << " ";
 		}
+
+		out.seekp(-1, out.cur);
 
 		out << "]";
 	}
 
-	void __repr__(stream_t& out, const list& self) {
+	void _repr_(stream_type& out, const list& self) {
 
-		if (!__is__(self)) {
+		if (self._list.empty()) {
 			out << "[]";
 			return;
 		}
 
 		out << "[";
 
-		out << repr(self._lead);
+		for (auto i = self._list.cbegin(); i != self._list.cend(); ++i) {
 
-		if (self._last.is()) {
-
-			if (self._lead.is()) {
-				out << " ";
-			}
-
-			out << repr(self._last.reverse());
+			i->repr(out);
+			out << " ";
 		}
+
+		out.seekp(-1, out.cur);
 
 		out << "]";
 	}
 
-	int_t __len__(const list& self) {
-		return self._size;
+	size_type _size_(const list& self) {
+		return self._list.size();
 	}
 
-	let __lead__(const list& self) {
+	let _lead_(const list& self) {
 
-		if (!self._lead.is()) {
-			return self._last.lead();
+		if (self._list.empty()) {
+			return nothing();
 		}
 
-		return self._lead.lead();
+		return self._list.front();
 	}
 
-	let __last__(const list& self) {
+	let _last_(const list& self) {
 
-		if (!self._last.is()) {
-			return self._lead.lead();
+		if (self._list.empty()) {
+			return nothing();
 		}
 
-		return self._last.lead();
+		return self._list.back();
 	}
 
-	let __place_lead__(const list& self, const let& other) {
+	let _place_lead_(const list& self, const let& other) {
 
 		if (other.is_nothing()) {
 			return self;
@@ -198,50 +200,25 @@ namespace Olly {
 
 		list e = self;
 
-		e._lead = e._lead.place_lead(other);
-
-		e._size += 1;
-
-		if (!e._last.is()) {
-			e.balance();
-		}
+		e._list.emplace(e._list.begin(), other);
 
 		return e;
 	}
 
-	let __shift_lead__(const list& self) {
+	let _shift_lead_(const list& self) {
 
-		if (__len__(self) == 0) {
+		if (_size_(self) == 0) {
 			return self;
 		}
 
 		list e = self;
 
-		if (!e._lead.is()) {
-
-			if (e._last.shift_lead().is()) {
-				// Balance if _last has more than one element.
-				e.balance();
-			}
-			else {
-				e._last = e._last.shift_lead();
-				return e;
-			}
-		}
-
-		e._lead = e._lead.shift_lead();
-
-		if (!e._lead.is()) {
-
-			if (e._last.shift_lead().is()) {
-				e.balance();
-			}
-		}
+		e._list.erase(e._list.begin());
 
 		return e;
 	}
 
-	let __place_last__(const list& self, const let& other) {
+	let _place_last_(const list& self, const let& other) {
 
 		if (other.is_nothing()) {
 			return self;
@@ -249,92 +226,113 @@ namespace Olly {
 
 		list e = self;
 
-		e._last = e._last.place_lead(other);
-
-		e._size += 1;
-
-		if (!e._lead.is()) {
-			e.balance();
-		}
+		e._list.emplace_back(other);
 
 		return e;
 	}
 
-	let __shift_last__(const list& self) {
+	let _shift_last_(const list& self) {
 
-		if (__len__(self) == 0) {
+		if (_size_(self) == 0) {
 			return self;
 		}
 
 		list e = self;
 
-		if (!e._last.is()) {
-
-			if (e._lead.shift_lead().is()) {
-				// Balance if _last has more than one element.
-				e.balance();
-			}
-			else {
-				e._lead = e._lead.shift_lead();
-				return e;
-			}
-		}
-
-		e._last = e._last.shift_lead();
-
-		if (!e._last.is()) {
-
-			if (e._lead.shift_lead().is()) {
-				e.balance();
-			}
-		}
+		e._list.pop_back();
 
 		return e;
 	}
 
-	let __reverse__(const list& self) {
+	let _reverse_(const list& self) {
 
-		if (__len__(self) < 2) {
+		if (_size_(self) < 2) {
 			return self;
 		}
 
 		list e;
 
-		e._lead = self._last;
-		e._last = self._lead;
-		e._size = self._size;
+		std::reverse(e._list.begin(), e._list.end());
 
 		return e;
 	}
 
-	void list::balance() {
+	let _get_(const list& self, const let& key) {
 
-		// print("lead = " + str(_lead) + " : last = " + str(_last));
+		const number* n = key.cast<number>();
 
-		bool_t flip = _last.is() && !_lead.is();
+		if (n) {
 
-		if (flip) {
-			std::swap(_lead, _last);
+			auto i = n->integer();
+
+			if (i == 0 || std::abs(i) > _size_(self)) {
+				return nothing();
+			}
+
+			list l = self;
+
+			bool_type rev = i < 0 ? true : false;
+
+			if (rev) {
+				int_type len = static_cast<int_type>(l._list.size());
+				i = len + i;
+			}
+			else {
+				i -= 1;
+			}
+
+			return l._list[i];
 		}
 
-		int_t i = _size < 2 ? 1 : _size / 2;
 
-		_lead = _lead.reverse();
-		_last = _last.reverse();
+		return nothing();
+	}
 
-		while (i-- > 0) {
+	let _set_(const list& self, const let& key, const let& val) {
 
-			_last = _last.place_lead(_lead.lead());
-			_lead = _lead.shift_lead();
+		const number* n = key.cast<number>();
+
+		if (n) {
+
+			auto i = n->integer();
+
+			if (i == 0 || std::abs(i) > _size_(self)) {
+				return nothing();
+			}
+
+			list l = self;
+
+			bool_type rev = i < 0 ? true : false;
+
+			if (rev) {
+				int_type len = static_cast<int_type>(l._list.size());
+				i = len + i;
+			}
+			else {
+				i -= 1;
+			}
+
+			l._list[i] = val;
+
+			return l;
 		}
 
-		_lead = _lead.reverse();
-		_last = _last.reverse();
 
-		if (flip) {
-			std::swap(_lead, _last);
-		}
+		return nothing();
+	}
 
-		// print("lead = " + str(_lead) + " : last = " + str(_last));
+	let _itr_(const list& self) { 
+
+		auto i = self._list.begin();
+
+		return nothing();
+	}
+
+	bool_type _interable_(const list& self) {
+		return true;
+	}
+
+	inline const Olly::list::list_type& Olly::list::get_list() const {
+		return _list;
 	}
 }

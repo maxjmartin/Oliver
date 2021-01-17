@@ -42,19 +42,19 @@ namespace Olly {
 		typedef		std::recursive_mutex		mutex_t;
 
 		file_t		_output;
-		stream_t    _stream;
+		stream_type    _stream;
 		mutex_t		_mutex;
-		bool_t		_locked;
+		bool_type		_locked;
 
 	public:
 
-		file_writer(const str_t& inp);
+		file_writer(const str_type& inp);
 		virtual ~file_writer();
 
-		bool_t is();
+		bool_type is();
 
-		void write(const str_t& word);
-		void write_line(const str_t& word);
+		void write(const str_type& word);
+		void write_line(const str_type& word);
 
 	private:
 		file_writer();
@@ -70,7 +70,7 @@ namespace Olly {
 	file_writer::file_writer() : _output(""), _stream(), _mutex(), _locked(false) {
 	}
 
-	file_writer::file_writer(const str_t& output_code) : _output(output_code, file_t::out), _stream(), _mutex(), _locked(_mutex.try_lock()) {
+	file_writer::file_writer(const str_type& output_code) : _output(output_code, file_t::out), _stream(), _mutex(), _locked(_mutex.try_lock()) {
 	}
 
 	file_writer::~file_writer() {
@@ -82,7 +82,7 @@ namespace Olly {
 	}
 
 
-	bool_t file_writer::is() {
+	bool_type file_writer::is() {
 		/*
 			Return true if the file is not eof
 			and in good condition.
@@ -93,7 +93,7 @@ namespace Olly {
 
 
 
-	void file_writer::write(const str_t& word) {
+	void file_writer::write(const str_type& word) {
 
 		if (_output.good()) {
 
@@ -101,7 +101,7 @@ namespace Olly {
 		}
 	}
 
-	void file_writer::write_line(const str_t& word) {
+	void file_writer::write_line(const str_type& word) {
 
 		if (_output.good()) {
 

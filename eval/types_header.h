@@ -21,10 +21,11 @@
 //			
 /********************************************************************************************/
 
-#include "..\let.h"
+#include "..\types\expression.h"
 #include "..\types\lambda.h"
 #include "..\types\boolean.h"
 #include "..\types\error.h"
+#include "..\types\list.h"
 #include "..\types\number.h"
 #include "..\types\string.h"
 #include "..\types\symbol.h"

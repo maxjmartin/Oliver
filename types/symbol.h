@@ -22,7 +22,7 @@
 /********************************************************************************************/
 
 #include <map>
-#include "..\let.h"
+#include "expression.h"
 #include ".\support\op_codes.h"
 
 namespace Olly {
@@ -32,7 +32,7 @@ namespace Olly {
 	//                                'op_call' Class Definition
 	//
 	//        The op_call class encapsulates system calls to functions within the
-	//        int_terpreter itself.  
+	//        int_typeerpreter itself.  
 	//
 	/********************************************************************************************/
 
@@ -47,17 +47,17 @@ namespace Olly {
 		op_call();
 		op_call(const op_call& obj);
 		op_call(OP_CODE val);
-		op_call(str_t str);
+		op_call(str_type str);
 		virtual ~op_call();
 
-		friend  stream_t& operator >> (stream_t& stream, op_call& self);
+		friend  stream_type& operator >> (stream_type& stream, op_call& self);
 
-		friend bool           __is__(const op_call& self);
-		friend str_t        __type__(const op_call& self);
-		friend real_t       __comp__(const op_call& self, const let& other);
-		friend void          __str__(stream_t& out, const op_call& self);
-		friend void         __repr__(stream_t& out, const op_call& self);
-		friend OP_CODE   __op_code__(const op_call& self);
+		friend bool           _is_(const op_call& self);
+		friend str_type        _type_(const op_call& self);
+		friend real_type       _comp_(const op_call& self, const let& other);
+		friend void          _str_(stream_type& out, const op_call& self);
+		friend void         _repr_(stream_type& out, const op_call& self);
+		friend OP_CODE   _op_code_(const op_call& self);
 	};
 
 
@@ -70,7 +70,7 @@ namespace Olly {
 	op_call::op_call(OP_CODE val) : _value(val) {
 	}
 
-	op_call::op_call(str_t str) : _value() {
+	op_call::op_call(str_type str) : _value() {
 
 		auto it = OPERATORS.find(str);
 
@@ -83,22 +83,22 @@ namespace Olly {
 	op_call::~op_call() {
 	}
 
-	stream_t& operator >> (stream_t& stream, op_call& self) {
+	stream_type& operator >> (stream_type& stream, op_call& self) {
 
 		self = op_call(stream.str());
 
 		return stream;
 	}
 
-	bool __is__(const op_call& self) {
+	bool _is_(const op_call& self) {
 		return self._value != OP_CODE::NOTHING_OP;
 	}
 
-	str_t __type__(const op_call& self) {
+	str_type _type_(const op_call& self) {
 		return "op_call";
 	}
 
-	real_t __comp__(const op_call& self, const let& other) {
+	real_type _comp_(const op_call& self, const let& other) {
 
 		const op_call* s = other.cast<op_call>();
 
@@ -115,7 +115,7 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const op_call& self) {
+	void _str_(stream_type& out, const op_call& self) {
 
 		for (auto it = OPERATORS.cbegin(); it != OPERATORS.cend(); ++it) {
 
@@ -129,11 +129,11 @@ namespace Olly {
 		out << "unknown_operator";
 	}
 
-	void __repr__(stream_t& out, const op_call& self) {
-		__str__(out, self);
+	void _repr_(stream_type& out, const op_call& self) {
+		_str_(out, self);
 	}
 
-	OP_CODE __op_code__(const op_call& self) {
+	OP_CODE _op_code_(const op_call& self) {
 
 		return self._value;
 	}
@@ -153,25 +153,25 @@ namespace Olly {
 
 	class symbol {
 
-		str_t _value;
+		str_type _value;
 
 
 	public:
 
 		symbol();
 		symbol(const symbol& obj);
-		symbol(str_t str);
+		symbol(str_type str);
 		virtual ~symbol();
 
-		friend  stream_t& operator >> (stream_t& stream, symbol& self);
+		friend  stream_type& operator >> (stream_type& stream, symbol& self);
 
-		friend bool           __is__(const symbol& self);
-		friend str_t        __type__(const symbol& self);
-		friend real_t       __comp__(const symbol& self, const let& other);
-		friend void          __str__(stream_t& out, const symbol& self);
-		friend void         __repr__(stream_t& out, const symbol& self);
+		friend bool           _is_(const symbol& self);
+		friend str_type        _type_(const symbol& self);
+		friend real_type       _comp_(const symbol& self, const let& other);
+		friend void          _str_(stream_type& out, const symbol& self);
+		friend void         _repr_(stream_type& out, const symbol& self);
 
-		friend str_t        __help__(const symbol& self);
+		friend str_type        _help_(const symbol& self);
 	};
 
 
@@ -181,28 +181,28 @@ namespace Olly {
 	symbol::symbol(const symbol& obj) : _value(obj._value) {
 	}
 
-	symbol::symbol(str_t str) : _value(str) {
+	symbol::symbol(str_type str) : _value(str) {
 	}
 
 	symbol::~symbol() {
 	}
 
-	stream_t& operator >> (stream_t& stream, symbol& self) {
+	stream_type& operator >> (stream_type& stream, symbol& self) {
 
 		self = symbol(stream.str());
 
 		return stream;
 	}
 
-	bool __is__(const symbol& self) {
+	bool _is_(const symbol& self) {
 		return !self._value.empty();
 	}
 
-	str_t __type__(const symbol& self) {
+	str_type _type_(const symbol& self) {
 		return "symbol";
 	}
 
-	real_t __comp__(const symbol& self, const let& other) {
+	real_type _comp_(const symbol& self, const let& other) {
 
 		const symbol* s = other.cast<symbol>();
 
@@ -219,15 +219,15 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const symbol& self) {
+	void _str_(stream_type& out, const symbol& self) {
 		out << self._value;
 	}
 
-	void __repr__(stream_t& out, const symbol& self) {
-		__str__(out, self);
+	void _repr_(stream_type& out, const symbol& self) {
+		_str_(out, self);
 	}
 
-	str_t __help__(const symbol& self) {
+	str_type _help_(const symbol& self) {
 		return "symbol";
 	}
 

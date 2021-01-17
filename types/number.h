@@ -22,7 +22,7 @@
 /********************************************************************************************/
 
 #include <complex>
-#include "..\let.h"
+#include "expression.h"
 
 namespace Olly {
 
@@ -33,7 +33,7 @@ namespace Olly {
 	//        The number class implements a mathematical number using the 'num_t'
 	//        from the 'sys_types' header.  At this time the class supports complex 
 	//        numerical operations through the C++ complex class implemented using
-	//        the 'real_t' typedef from the 'sys_types' header.  
+	//        the 'real_type' typedef from the 'sys_types' header.  
 	//
 	//        It should be noted that complex numbers must be entered with a comma
 	//        separating the real and complex portions of the number.  
@@ -43,48 +43,48 @@ namespace Olly {
 	/********************************************************************************************/
 
 	class number {
-		typedef		std::complex<real_t>		num_t;
+		typedef		std::complex<real_type>		num_t;
 
 	public:
 
 		number();
 		number(const number& obj);
 		number(const num_t& value);
-		number(str_t str);
-		number(const int_t& value);
-		number(const real_t& value);
-		number(const real_t& real, const real_t& imgn);
+		number(str_type str);
+		number(const int_type& value);
+		number(const real_type& value);
+		number(const real_type& real, const real_type& imgn);
 		number(const unsigned long long& value);
 		number(const unsigned long& value);
 		number(const unsigned int& value);
 		virtual ~number();
 
-		friend stream_t& operator >> (stream_t& stream, number& self);
+		friend stream_type& operator >> (stream_type& stream, number& self);
 
-		friend str_t      __type__(const number& self);
-		friend bool_t       __is__(const number& self);
-		friend real_t     __comp__(const number& self, const let& other);
-		friend void        __str__(stream_t& out, const number& self);
-		friend void       __repr__(stream_t& out, const number& self);
+		friend str_type      _type_(const number& self);
+		friend bool_type       _is_(const number& self);
+		friend real_type     _comp_(const number& self, const let& other);
+		friend void        _str_(stream_type& out, const number& self);
+		friend void       _repr_(stream_type& out, const number& self);
 
-		friend let         __add__(const number& self, const let& other);
-		friend let         __sub__(const number& self, const let& other);
-		friend let         __mul__(const number& self, const let& other);
-		friend let         __div__(const number& self, const let& other);
-		friend let         __mod__(const number& self, const let& other);
-		friend let         __neg__(const number& self);
+		friend let         _add_(const number& self, const let& other);
+		friend let         _sub_(const number& self, const let& other);
+		friend let         _mul_(const number& self, const let& other);
+		friend let         _div_(const number& self, const let& other);
+		friend let         _mod_(const number& self, const let& other);
+		friend let         _neg_(const number& self);
 
-		friend let       __f_div__(const number& self, const let& other);
-		friend let         __rem__(const number& self, const let& other);
-		friend let         __pow__(const number& self, const let& other);
+		friend let       _f_div_(const number& self, const let& other);
+		friend let         _rem_(const number& self, const let& other);
+		friend let         _pow_(const number& self, const let& other);
 
-		friend bool_t      __nan__(const number& self);
-		friend bool_t  __complex__(const number& self);
+		friend bool_type      _nan_(const number& self);
+		friend bool_type  _complex_(const number& self);
 
-		friend int_t   __integer__(const number& self);
+		int_type integer() const;
 
 	private:
-		typedef		std::vector<str_t>		tokens_t;
+		typedef		std::vector<str_type>		tokens_type;
 
 		num_t _value;
 	};
@@ -98,7 +98,7 @@ namespace Olly {
 	number::number(const num_t& value) : _value(value) {
 	}
 
-	number::number(str_t str) : _value(0.0, 0.0) {
+	number::number(str_type str) : _value(0.0, 0.0) {
 
 		if (str == "") {
 			return;
@@ -107,35 +107,35 @@ namespace Olly {
 		str = to_lower(str);
 
 		if (str == "nan") {
-			_value = num_t(std::numeric_limits<real_t>::quiet_NaN(), std::numeric_limits<real_t>::quiet_NaN());
+			_value = num_t(std::numeric_limits<real_type>::quiet_NaN(), std::numeric_limits<real_type>::quiet_NaN());
 			return;
 		}
 
 		if (str == "inf" || str == "+inf") {
-			_value = num_t(std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity());
+			_value = num_t(std::numeric_limits<real_type>::infinity(), std::numeric_limits<real_type>::infinity());
 			return;
 		}
 
 		if (str == "-inf") {
-			_value = num_t(std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity());
+			_value = num_t(std::numeric_limits<real_type>::infinity(), std::numeric_limits<real_type>::infinity());
 			return;
 		}
 
 		std::replace(str.begin(), str.end(), ',', ' ');
 
-		tokens_t tokens = split(str, " ");
+		tokens_type tokens = split(str, " ");
 
-		real_t real = 0;
-		real_t imgn = 0;
+		real_type real = 0;
+		real_type imgn = 0;
 
 		if (tokens.size()) {
 
 			if (tokens.back().back() == 'i' || tokens.back().back() == 'j' || tokens.size() > 1) {
 
-				str_t t = tokens.back();
+				str_type t = tokens.back();
 				t.pop_back();
 
-				imgn = to<real_t>(t);
+				imgn = to<real_type>(t);
 
 				tokens.pop_back();
 			}
@@ -143,22 +143,22 @@ namespace Olly {
 
 		if (tokens.size()) {
 
-			real = to<real_t>(tokens.front());
+			real = to<real_type>(tokens.front());
 		}
 
 		_value = num_t(real, imgn);
 	}
 
-	number::number(const int_t& value) : _value(value, 0.0) {
+	number::number(const int_type& value) : _value(value, 0.0) {
 	}
 
-	number::number(const real_t& value) : _value(value, 0.0) {
+	number::number(const real_type& value) : _value(value, 0.0) {
 	}
 
-	number::number(const real_t& real, const real_t& imgn) : _value(real, imgn) {
+	number::number(const real_type& real, const real_type& imgn) : _value(real, imgn) {
 	}
 
-	number::number(const unsigned long long& value) : _value(static_cast<real_t>(value), 0.0) {
+	number::number(const unsigned long long& value) : _value(static_cast<real_type>(value), 0.0) {
 	}
 
 	number::number(const unsigned long& value) : _value(value, 0.0) {
@@ -170,37 +170,37 @@ namespace Olly {
 	number::~number() {
 	}
 
-	stream_t& operator >> (stream_t& stream, number& self) {
+	stream_type& operator >> (stream_type& stream, number& self) {
 
 		self = number(stream.str());
 
 		return stream;
 	}
 
-	str_t __type__(const number& self) {
+	str_type _type_(const number& self) {
 		return "number";
 	}
 
-	bool_t __is__(const number& self) {
+	bool_type _is_(const number& self) {
 
-		if (__nan__(self)) {
+		if (_nan_(self)) {
 			return false;
 		}
 
 		return (self._value.real() || self._value.imag() ? true : false);
 	}
 
-	real_t __comp__(const number& self, const let& other) {
+	real_type _comp_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
 		if (n) {
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
+			if (_nan_(self) || _nan_(*n) || _complex_(self) || _complex_(*n)) {
 				return NOT_A_NUMBER;
 			}
 
-			real_t x = self._value.real();
-			real_t y = n->_value.real();
+			real_type x = self._value.real();
+			real_type y = n->_value.real();
 
 			if (x > y) {
 				return 1.0;
@@ -216,10 +216,10 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const number& self) {
+	void _str_(stream_type& out, const number& self) {
 
-		real_t real = self._value.real();
-		real_t imag = self._value.imag();
+		real_type real = self._value.real();
+		real_type imag = self._value.imag();
 
 		if (imag && !real) {
 
@@ -248,13 +248,13 @@ namespace Olly {
 		out.unsetf(std::ios::showpos);
 	}
 
-	void __repr__(stream_t& out, const number& self) {
+	void _repr_(stream_type& out, const number& self) {
 		out << "\'";
-		__str__(out, self);
+		_str_(out, self);
 		out << "\'";
 	}
 
-	let __add__(const number& self, const let& other) {
+	let _add_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -264,7 +264,7 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __sub__(const number& self, const let& other) {
+	let _sub_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -274,7 +274,7 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __mul__(const number& self, const let& other) {
+	let _mul_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -284,7 +284,7 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __div__(const number& self, const let& other) {
+	let _div_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
@@ -294,13 +294,13 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __mod__(const number& self, const let& other) {
+	let _mod_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
 		if (n) {
 
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
+			if (_nan_(self) || _nan_(*n) || _complex_(self) || _complex_(*n)) {
 				return number("nan");
 			}
 
@@ -310,22 +310,22 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __neg__(const number& self) {
+	let _neg_(const number& self) {
 
-		if (__nan__(self)) {
+		if (_nan_(self)) {
 			return number("nan");
 		}
 
 		return number(-self._value);
 	}
 
-	let __f_div__(const number& self, const let& other) {
+	let _f_div_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
 		if (n) {
 
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
+			if (_nan_(self) || _nan_(*n) || _complex_(self) || _complex_(*n)) {
 				return number("nan");
 			}
 
@@ -335,17 +335,17 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __rem__(const number& self, const let& other) {
+	let _rem_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
 		if (n) {
 
-			if (__nan__(self) || __nan__(*n) || __complex__(self) || __complex__(*n)) {
+			if (_nan_(self) || _nan_(*n) || _complex_(self) || _complex_(*n)) {
 				return number("nan");
 			}
 
-			real_t r = self._value.real() / n->_value.real();
+			real_type r = self._value.real() / n->_value.real();
 
 			return number(r - std::floor(r));
 		}
@@ -353,13 +353,13 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __pow__(const number& self, const let& other) {
+	let _pow_(const number& self, const let& other) {
 
 		const number* n = other.cast<number>();
 
 		if (n) {
 
-			if (__nan__(self) || __nan__(*n)) {
+			if (_nan_(self) || _nan_(*n)) {
 				return number("nan");
 			}
 
@@ -369,11 +369,11 @@ namespace Olly {
 		return nothing();
 	}
 
-	bool_t __nan__(const number& self) {
+	bool_type _nan_(const number& self) {
 		return std::isnan(self._value.real()) || std::isnan(self._value.imag());
 	}
 
-	bool_t __complex__(const number& self) {
+	bool_type _complex_(const number& self) {
 		
 		if (self._value.imag()) {
 			return true;
@@ -382,9 +382,9 @@ namespace Olly {
 		return false;
 	}
 
-	int_t __integer__(const number& self) {
+	int_type number::integer() const {
 
-		return static_cast<int_t>(self._value.real());
+		return static_cast<int_type>(_value.real());
 	}
 
 } // end

@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "let.h"
+#include "expression.h"
 
 namespace Olly {
 
@@ -38,31 +38,31 @@ namespace Olly {
 
 	class string {
 
-		str_t _value;
+		str_type _value;
 
 	public:
 
 		string();
 		string(const string& obj);
-		string(str_t str);
+		string(str_type str);
 		string(const char& c);
 		virtual ~string();
 
-		friend  stream_t& operator >> (stream_t& stream, string& self);
+		friend  stream_type& operator >> (stream_type& stream, string& self);
 
-		friend str_t       __type__(const string& self);
-		friend bool          __is__(const string& self);
-		friend real_t      __comp__(const string& self, const let& other);
-		friend void         __str__(stream_t& out, const string& self);
-		friend void        __repr__(stream_t& out, const string& self);
+		friend str_type       _type_(const string& self);
+		friend bool          _is_(const string& self);
+		friend real_type      _comp_(const string& self, const let& other);
+		friend void         _str_(stream_type& out, const string& self);
+		friend void        _repr_(stream_type& out, const string& self);
 
-		friend int_t        __len__(const string& self);
-		friend let         __lead__(const string& self);
-		friend let        __place__(const string& self, const let& other);
-		friend let        __shift__(const string& self);
-		friend let      __reverse__(const string& self);
+		friend int_type        _len_(const string& self);
+		friend let         _lead_(const string& self);
+		friend let        _place_(const string& self, const let& other);
+		friend let        _shift_(const string& self);
+		friend let      _reverse_(const string& self);
 
-		friend bool_t  __iterable__(const string& self);
+		friend bool_type  _iterable_(const string& self);
 	};
 
 
@@ -72,7 +72,7 @@ namespace Olly {
 	string::string(const string& obj) : _value(obj._value) {
 	}
 
-	string::string(str_t str) : _value(str) {
+	string::string(str_type str) : _value(str) {
 	}
 
 	string::string(const char& c) : _value(str(c)) {
@@ -81,22 +81,22 @@ namespace Olly {
 	string::~string() {
 	}
 
-	stream_t& operator >> (stream_t& stream, string& self) {
+	stream_type& operator >> (stream_type& stream, string& self) {
 
 		self = string(stream.str());
 
 		return stream;
 	}
 
-	str_t __type__(const string& self) {
+	str_type _type_(const string& self) {
 		return "string";
 	}
 
-	bool __is__(const string& self) {
+	bool _is_(const string& self) {
 		return !self._value.empty();
 	}
 
-	real_t __comp__(const string& self, const let& other) {
+	real_type _comp_(const string& self, const let& other) {
 
 		const string* s = other.cast<string>();
 
@@ -115,26 +115,26 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const string& self) {
+	void _str_(stream_type& out, const string& self) {
 		out << self._value;
 	}
 
-	void __repr__(stream_t& out, const string& self) {
+	void _repr_(stream_type& out, const string& self) {
 		out << "\"";
-		__str__(out, self);
+		_str_(out, self);
 		out << "\"";
 	}
 
-	int_t __len__(const string& self) {
-		return (int_t)self._value.size();
+	int_type _len_(const string& self) {
+		return (int_type)self._value.size();
 	}
 
-	let __lead__(const string& self) {
+	let _lead_(const string& self) {
 
 		return string(self._value.front());
 	}
 
-	let __place__(const string& self, const let& other) {
+	let _place_(const string& self, const let& other) {
 
 		const string* s = other.cast<string>();
 
@@ -150,7 +150,7 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __shift__(const string& self) {
+	let _shift_(const string& self) {
 
 		if (self._value.empty()) {
 			return self;
@@ -162,7 +162,7 @@ namespace Olly {
 		return t;
 	}
 
-	let __reverse__(const string& self) {
+	let _reverse_(const string& self) {
 
 		string l = self;
 
@@ -171,7 +171,7 @@ namespace Olly {
 		return l;
 	}
 
-	bool_t __iterable__(const string& self) {
+	bool_type _iterable_(const string& self) {
 		return true;
 	}
 

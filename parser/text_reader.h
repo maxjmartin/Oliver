@@ -45,24 +45,24 @@ namespace Olly {
 
 		char_t      _c;
 		file_t		_input;
-		bool_t      _file;
-		stream_t    _stream;
+		bool_type      _file;
+		stream_type    _stream;
 		mutex_t		_mutex;
-		bool_t		_locked;
+		bool_type		_locked;
 
 	public:
 
-		text_reader(const str_t& inp);
+		text_reader(const str_type& inp);
 		virtual ~text_reader();
 
 		char_t next();
 		char_t peek();
 
-		str_t get_line();
+		str_type get_line();
 
-		bool_t is();
+		bool_type is();
 
-		bool_t is_file();
+		bool_type is_file();
 
 	private:
 		text_reader();
@@ -78,7 +78,7 @@ namespace Olly {
 	text_reader::text_reader() : _c('\0'), _input(""), _file(false), _stream(), _mutex(), _locked(false) {
 	}
 
-	text_reader::text_reader(const str_t& input_code) : _c('\0'), _input(input_code, file_t::in), _file(true), _stream(), _mutex(), _locked(_mutex.try_lock()) {
+	text_reader::text_reader(const str_type& input_code) : _c('\0'), _input(input_code, file_t::in), _file(true), _stream(), _mutex(), _locked(_mutex.try_lock()) {
 		/*
 			Open a file 'file_name' and retrieve its first character
 			Setting the value of the character to '_c'.  So long as
@@ -146,7 +146,7 @@ namespace Olly {
 		return _c;
 	}
 
-	bool_t text_reader::is() {
+	bool_type text_reader::is() {
 		/*
 			Return true if the file is not eof
 			and in good condition.
@@ -158,7 +158,7 @@ namespace Olly {
 		return (!_stream.eof() && _stream.good());
 	}
 
-	bool_t text_reader::is_file() {
+	bool_type text_reader::is_file() {
 		/*
 			Return true if the file is not eof
 			and in good condition.
@@ -167,11 +167,11 @@ namespace Olly {
 		return _file;
 	}
 
-	str_t text_reader::get_line() {
+	str_type text_reader::get_line() {
 
 		if (_file && !_input.eof() && _input.good()) {
 
-			str_t line;
+			str_type line;
 
 			std::getline(_input, line);
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /********************************************************************************************/
 //
@@ -26,13 +26,7 @@
 #include "token_reader.h"
 #include "text_reader.h"
 
-#include "..\types\lambda.h"
-#include "..\types\list.h"
-#include "..\types\boolean.h"
-#include "..\types\number.h"
-#include "..\types\string.h"
-#include "..\types\symbol.h"
-#include "..\Oliver.h"
+#include ".\eval\types_header.h"
 
 namespace Olly {
 
@@ -48,7 +42,7 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	typedef		std::regex		regex_t;
+	typedef		std::regex		regex_type;
 
 	// The regex below is currently not in use.  Will see later integration.  
 	// static const regex_t  REAL_REGEX("((\\+|-)?[[:digit:]]+)(\\.(([[:digit:]]+)?))?((e|E)((\\+|-)?)[[:digit:]]+)?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
@@ -58,12 +52,12 @@ namespace Olly {
 		typedef	char char_t;
 
 		text_reader			_input;    // The lexical code to parse.
-		tokens_t			_text;	   // The parsed code read from the input.
-		bool_t				_skip;     // Identifies if a token exists within the bounds of a comment block.
+		tokens_type			_text;	   // The parsed code read from the input.
+		bool_type				_skip;     // Identifies if a token exists within the bounds of a comment block.
 
 	public:
 
-		parser(str_t input);
+		parser(str_type input);
 		virtual ~parser();
 
 		let parse();
@@ -73,28 +67,28 @@ namespace Olly {
 		parser() = delete;
 		parser(const parser& obj) = delete;
 
-		int_t  is_regex_escape_char(const char& c);
-		int_t  is_string_escape_char(const char& c);
+		int_type  is_regex_escape_char(const char& c);
+		int_type  is_string_escape_char(const char& c);
 
-		void process_word(str_t& word);
+		void process_word(str_type& word);
 
-		str_t read_string();
-		str_t read_number();
-		str_t read_format();
-		str_t read_regex();
-		str_t list_op(const char& c);
-		str_t object_op(const char& c);
-		str_t expression_op(const char& c);
-		str_t closure_op(const char& c);
+		str_type read_string();
+		str_type read_number();
+		str_type read_format();
+		str_type read_regex();
+		str_type list_op(const char& c);
+		str_type object_op(const char& c);
+		str_type expression_op(const char& c);
+		str_type closure_op(const char& c);
 
 		void skip_comment_line();
 
-		bool_t whitespace_char(char_t c);
+		bool_type whitespace_char(char_t c);
 
 		let  compile();
-		void compile(str_t& word, token_reader& code, let& exp);
+		void compile(str_type& word, token_reader& code, let& exp);
 
-		str_t collect_string(const str_t& stop, token_reader& code);
+		str_type collect_string(const str_type& stop, token_reader& code);
 	};
 
 
@@ -102,7 +96,7 @@ namespace Olly {
 	//                                'parser ' method definition
 	/********************************************************************************************/
 
-	parser::parser(str_t input) : _input(input), _text(), _skip() {
+	parser::parser(str_type input) : _input(input), _text(), _skip() {
 	}
 
 	parser::~parser() {
@@ -130,7 +124,7 @@ namespace Olly {
 			_input.next();
 		}
 
-		str_t  word;
+		str_type  word;
 		char_t c;
 
 		// _text.push_back("(");
@@ -150,12 +144,12 @@ namespace Olly {
 					Identify unary operators, and split thier invocation.
 				*/
 
-				if (word == "-") {
+				if (word == "-" && c != '-') {
 					_text.push_back("neg");
 					word = "";
 				}
 				
-				if (word == "+") {
+				if (word == "+" && c != '+') {
 					_text.push_back("abs");
 					word = "";
 				}
@@ -173,7 +167,7 @@ namespace Olly {
 				word = "";
 			}
 
-			else if (c == ',') {
+			else if (c == ',' || c == '.') {
 				/*
 					Consider commas an operator and
 					split them from normal content.
@@ -185,7 +179,12 @@ namespace Olly {
 
 				if (!_skip) {
 
-					_text.push_back(",");
+					if (c == '.') {
+						_text.push_back(".");
+					}
+					else {
+						_text.push_back(",");
+					}
 				}
 
 				c = ' ';
@@ -301,20 +300,15 @@ namespace Olly {
 				}
 
 				if (!_skip) {
-
 					if (_input.peek() == '=') {
+						c = _input.next();
 						_text.push_back(":=");
-						c = _input.next();
-					}
-					else if (_text.back() == "=") {
-						_text.pop_back();
-						_text.push_back("=:");
-						c = _input.next();
+						c = ' ';
 					}
 					else {
 						_text.push_back(closure_op(c));
+						c = ' ';
 					}
-					c = ' ';
 				}
 			}
 
@@ -327,6 +321,11 @@ namespace Olly {
 
 				if (word.size()) {
 					process_word(word);
+
+					if (word != "[") {
+						word = ".";
+						process_word(word);
+					}
 					word = "";
 				}
 
@@ -373,7 +372,7 @@ namespace Olly {
 				if (_input.peek() == '#') {
 					/*
 						Comment blocks are handled by setting a
-						bool_tean value to identify when a comment
+						bool_typeean value to identify when a comment
 						is found.  Else a function is called to
 						handle the comment up to the next line.
 					*/
@@ -436,7 +435,7 @@ namespace Olly {
 		return compile();
 	}
 
-	int_t parser::is_regex_escape_char(const char& c) {
+	int_type parser::is_regex_escape_char(const char& c) {
 		/*
 			Determine if an encountered character
 			could be a part of an escaped char
@@ -454,7 +453,7 @@ namespace Olly {
 		return false;
 	}
 
-	int_t parser::is_string_escape_char(const char& c) {
+	int_type parser::is_string_escape_char(const char& c) {
 		/*
 			Determine if an encountered character
 			could be a part of an escaped char
@@ -471,7 +470,7 @@ namespace Olly {
 		return false;
 	}
 
-	void parser::process_word(str_t& word) {
+	void parser::process_word(str_type& word) {
 		/*
 			Check that we are not within a comment block.
 			Else ensure we have a word to handle and place
@@ -487,7 +486,7 @@ namespace Olly {
 		}
 	}
 
-	str_t parser::read_format() {
+	str_type parser::read_format() {
 		/*
 			Read each character including
 			whitespace and form a word to
@@ -495,7 +494,7 @@ namespace Olly {
 			object.
 		*/
 
-		str_t str;
+		str_type str;
 
 		char c;
 
@@ -519,7 +518,7 @@ namespace Olly {
 		return str;
 	}
 
-	str_t parser::read_string() {
+	str_type parser::read_string() {
 		/*
 			Read each character including
 			whitespace and form a word to
@@ -533,9 +532,9 @@ namespace Olly {
 			character to the string.
 		*/
 
-		bool_t escaped = false;
+		bool_type escaped = false;
 
-		str_t str;
+		str_type str;
 
 		char c;
 
@@ -601,7 +600,7 @@ namespace Olly {
 		return str;
 	}
 
-	str_t parser::read_number() {
+	str_type parser::read_number() {
 		/*
 			Read each character including
 			whitespace and form a word to
@@ -615,7 +614,7 @@ namespace Olly {
 			character to the string.
 		*/
 
-		str_t str;
+		str_type str;
 
 		char c;
 
@@ -634,7 +633,7 @@ namespace Olly {
 		return str;
 	}
 
-	str_t parser::read_regex() {
+	str_type parser::read_regex() {
 		/*
 			Read each character including
 			whitespace and form a word to
@@ -648,9 +647,9 @@ namespace Olly {
 			character to the regex.
 		*/
 
-		bool_t escaped = false;
+		bool_type escaped = false;
 
-		str_t str;
+		str_type str;
 
 		char c;
 
@@ -684,7 +683,7 @@ namespace Olly {
 		return str;
 	}
 
-	str_t parser::list_op(const char& c) {
+	str_type parser::list_op(const char& c) {
 		/*
 			Validate which list operator is provided.
 		*/
@@ -696,7 +695,7 @@ namespace Olly {
 		return "]";
 	}
 
-	str_t parser::object_op(const char& c) {
+	str_type parser::object_op(const char& c) {
 		/*
 			Validate which object operator is provided.
 		*/
@@ -708,7 +707,7 @@ namespace Olly {
 		return "}";
 	}
 
-	str_t parser::expression_op(const char& c) {
+	str_type parser::expression_op(const char& c) {
 		/*
 			Validate which expression operator is provided.
 		*/
@@ -720,7 +719,7 @@ namespace Olly {
 		return ")";
 	}
 
-	str_t parser::closure_op(const char& c) {
+	str_type parser::closure_op(const char& c) {
 		/*
 			Validate which expression operator is provided.
 		*/
@@ -748,7 +747,7 @@ namespace Olly {
 		}
 	}
 
-	bool_t parser::whitespace_char(char_t c) {
+	bool_type parser::whitespace_char(char_t c) {
 
 		if (c < 32) {
 			return true;
@@ -769,7 +768,7 @@ namespace Olly {
 			return expression();
 		}
 
-		str_t word;
+		str_type word;
 		let exp = expression();
 
 		while (code.is()) {
@@ -782,7 +781,7 @@ namespace Olly {
 		return exp.reverse();
 	}
 
-	void parser::compile(str_t& word, token_reader& code, let& exp) {
+	void parser::compile(str_type& word, token_reader& code, let& exp) {
 
 		if (word == ")" || word == ";" || word == "]" || word == "}") {
 			return;
@@ -834,7 +833,7 @@ namespace Olly {
 
 		if (word == ":") {
 
-			let e = expression();
+			let e = statement();
 
 			// e = e.place_lead(op_call(OP_CODE::begin_scope_op));
 
@@ -865,7 +864,7 @@ namespace Olly {
 			}
 			word = "";
 
-			let l = list(e);
+			let l = list(e.reverse());
 
 			exp = exp.place_lead(l);
 
@@ -895,11 +894,27 @@ namespace Olly {
 
 			if (it != OPERATORS.end()) {
 
-				exp = exp.place_lead(op_call(it->second));
+				let opr = op_call(it->second);
+
+				if (it->second > OP_CODE::IO_OPERATORS && it->second < OP_CODE::PREFIX_UNARY_OPERATORS) {
+					/*
+						Handle prefix unary operators by placing the next code expression
+						and it within it own expression.  This ensures that binary operators
+						execute in the right order.  
+					*/
+					let e = expression();
+					word = code.next();
+					compile(word, code, e);
+					word = "";
+
+					opr = e.place_lead(opr);
+				}
+
+				exp = exp.place_lead(opr);
 				return;
 			}
 
-			str_t upper_case = to_upper(word);
+			str_type upper_case = to_upper(word);
 
 			if (upper_case == "TRUE"  || upper_case == "FALSE"    ||
 				upper_case == "1"     || upper_case == "0"        ||
@@ -920,10 +935,10 @@ namespace Olly {
 		return;
 	}
 
-	str_t parser::collect_string(const str_t& stop, token_reader& code) {
+	str_type parser::collect_string(const str_type& stop, token_reader& code) {
 
-		str_t word = code.next();
-		str_t text = "";
+		str_type word = code.next();
+		str_type text = "";
 
 		while (word != stop && word != "") {
 

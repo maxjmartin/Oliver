@@ -21,8 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "..\let.h"
-#include "..\types\symbol.h"
+#include "expression.h"
 
 namespace Olly {
 
@@ -39,7 +38,7 @@ namespace Olly {
 	class set {
 
 		let    _set;
-		str_t  _name;
+		str_type  _name;
 
 	public:
 
@@ -49,15 +48,15 @@ namespace Olly {
 		set(let x, let y);
 		virtual ~set();
 
-		friend str_t           __type__(const set& self);
-		friend bool_t            __is__(const set& self);
-		friend real_t          __comp__(const set& self, const let& other);
-		friend void             __str__(stream_t& out, const set& self);
-		friend void            __repr__(stream_t& out, const set& self);
+		friend str_type           _type_(const set& self);
+		friend bool_type            _is_(const set& self);
+		friend real_type          _comp_(const set& self, const let& other);
+		friend void             _str_(stream_type& out, const set& self);
+		friend void            _repr_(stream_type& out, const set& self);
 
-		friend int_t            __len__(const set& self);
-		friend let              __get__(const set& self, const let& key);
-		friend let              __set__(const set& self, const let& key, const let& val);
+		friend int_type            _len_(const set& self);
+		friend let              _get_(const set& self, const let& key);
+		friend let              data_t_set_(const set& self, const let& key, const let& val);
 	};
 
 	/********************************************************************************************/
@@ -104,15 +103,15 @@ namespace Olly {
 	set::~set() {
 	}
 
-	std::string __type__(const set& self) {
+	std::string _type_(const set& self) {
 		return self._name;
 	}
 
-	bool_t __is__(const set& self) {
+	bool_type _is_(const set& self) {
 		return self._set.is();
 	}
 
-	real_t __comp__(const set& self, const let& other) {
+	real_type _comp_(const set& self, const let& other) {
 
 		const set* e = other.cast<set>();
 
@@ -129,12 +128,12 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const set& self) {
+	void _str_(stream_type& out, const set& self) {
 
 		out << "{";
 
 		let exp = self._set;
-		int_t limit = self._set.len();
+		int_type limit = self._set.len();
 
 		if (limit) {
 			limit -= 1;
@@ -168,12 +167,12 @@ namespace Olly {
 		out << "}";
 	}
 
-	void __repr__(stream_t& out, const set& self) {
+	void _repr_(stream_type& out, const set& self) {
 
 		out << "{";
 
 		let exp = self._set;
-		int_t limit = self._set.len();
+		int_type limit = self._set.len();
 
 		if (limit) {
 			limit -= 1;
@@ -207,12 +206,12 @@ namespace Olly {
 		out << "}";
 	}
 
-	int_t __len__(const set& self) {
+	int_type _len_(const set& self) {
 
 		return self._set.len();
 	}
 
-	let __get__(const set& self, const let& key) {
+	let _get_(const set& self, const let& key) {
 
 		let exp = self;
 
@@ -228,7 +227,7 @@ namespace Olly {
 		return nothing();
 	}
 
-	let __set__(const set& self, const let& key, const let& val) {
+	let data_t_set_(const set& self, const let& key, const let& val) {
 
 		set new_set;
 
@@ -238,7 +237,7 @@ namespace Olly {
 		}
 
 		let exp = self._set;
-		bool_t set = false;
+		bool_type set = false;
 
 		while (exp.is()) {
 

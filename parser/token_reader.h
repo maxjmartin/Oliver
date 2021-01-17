@@ -37,18 +37,18 @@ namespace Olly {
 
 	public:
 
-		token_reader(const tokens_t& input_code);
+		token_reader(const tokens_type& input_code);
 		virtual ~token_reader();
 
-		str_t next();
-		str_t peek();
+		str_type next();
+		str_type peek();
 
-		bool_t is();
+		bool_type is();
 
 	private:
 
-		const tokens_t& _code;
-		tokens_t::const_iterator	_i;
+		const tokens_type& _code;
+		tokens_type::const_iterator	_i;
 
 		token_reader() = delete;
 		token_reader(const token_reader& obj) = delete;
@@ -60,7 +60,7 @@ namespace Olly {
 	//
 	/********************************************************************************************/
 
-	token_reader::token_reader(const tokens_t& input_code) : _code(input_code), _i() {
+	token_reader::token_reader(const tokens_type& input_code) : _code(input_code), _i() {
 
 		if (!_code.empty()) {
 			_i = _code.cbegin();
@@ -70,11 +70,11 @@ namespace Olly {
 	token_reader::~token_reader() {
 	}
 
-	str_t token_reader::next() {
+	str_type token_reader::next() {
 
 		if (is()) {
 
-			str_t t = *_i;
+			str_type t = *_i;
 
 			++_i;
 
@@ -84,14 +84,14 @@ namespace Olly {
 		return "";
 	}
 
-	str_t token_reader::peek() {
+	str_type token_reader::peek() {
 		/*
 			Return the current value of '_c'.
 		*/
 		return *_i;
 	}
 
-	bool_t token_reader::is() {
+	bool_type token_reader::is() {
 		/*
 			Return true if the file is not eof
 			and in good condition.

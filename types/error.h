@@ -21,7 +21,7 @@
 //			
 /********************************************************************************************/
 
-#include "..\let.h"
+#include "expression.h"
 
 namespace Olly {
 
@@ -38,20 +38,20 @@ namespace Olly {
 
 	class error {
 
-		str_t _value;
+		str_type _value;
 
 	public:
 
 		error();
 		error(const error& obj);
-		error(str_t val);
+		error(str_type val);
 		virtual ~error();
 
-		friend str_t       __type__(const error& self);
-		friend bool          __is__(const error& self);
-		friend real_t      __comp__(const error& self, const let& other);
-		friend void         __str__(stream_t& out, const error& self);
-		friend void        __repr__(stream_t& out, const error& self);
+		friend str_type       _type_(const error& self);
+		friend bool          _is_(const error& self);
+		friend real_type      _comp_(const error& self, const let& other);
+		friend void         _str_(stream_type& out, const error& self);
+		friend void        _repr_(stream_type& out, const error& self);
 	};
 
 
@@ -61,21 +61,21 @@ namespace Olly {
 	error::error(const error& obj) : _value(obj._value) {
 	}
 
-	error::error(str_t val) :  _value(val) {
+	error::error(str_type val) :  _value(val) {
 	}
 
 	error::~error() {
 	}
 
-	str_t __type__(const error& self) {
+	str_type _type_(const error& self) {
 		return "ERROR";
 	}
 
-	bool __is__(const error& self) {
+	bool _is_(const error& self) {
 		return !self._value.empty();
 	}
 
-	real_t __comp__(const error& self, const let& other) {
+	real_type _comp_(const error& self, const let& other) {
 
 		const error* s = other.cast<error>();
 
@@ -94,12 +94,12 @@ namespace Olly {
 		return NOT_A_NUMBER;
 	}
 
-	void __str__(stream_t& out, const error& self) {
+	void _str_(stream_type& out, const error& self) {
 		out << self._value;
 	}
 
-	void __repr__(stream_t& out, const error& self) {
-		__str__(out, self);
+	void _repr_(stream_type& out, const error& self) {
+		_str_(out, self);
 		out << "ERROR";
 	}
 	
